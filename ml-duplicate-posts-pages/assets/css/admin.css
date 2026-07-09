@@ -122,6 +122,30 @@
     padding-top: 12px;
 }
 
+.mldpp-preview-slug {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 12px;
+    color: #5b7786;
+    min-height: 18px;
+}
+
+.mldpp-preview-slug--ready {
+    padding: 2px 8px;
+    background: #f4f9fb;
+    border: 1px solid #d7e6ec;
+    border-radius: 4px;
+    color: #114257;
+}
+
+.mldpp-slug-cell {
+    background: #f4f9fb;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #114257;
+    font-size: 12px;
+}
+
 @media (max-width: 1100px) {
     .mldpp-grid,
     .mldpp-grid--bottom {

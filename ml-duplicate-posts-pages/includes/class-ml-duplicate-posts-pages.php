@@ -36,6 +36,7 @@ class Plugin {
         add_action('admin_init', array($this, 'handle_duplicate_request'));
         add_action('admin_init', array($this, 'handle_bulk_duplicate_request'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
+        add_action('wp_ajax_mldpp_preview_slug', array($this, 'ajax_preview_slug'));
 
         add_filter('post_row_actions', array($this, 'add_row_action'), 10, 2);
         add_filter('page_row_actions', array($this, 'add_row_action'), 10, 2);
@@ -103,7 +104,14 @@ class Plugin {
         );
 
         wp_localize_script('mldpp-admin', 'mldppAdmin', array(
-            'copiedText' => __('Link copiado.', 'ml-duplicate-posts-pages'),
+            'copiedText'   => __('Link copiado.', 'ml-duplicate-posts-pages'),
+            'previewNonce' => wp_create_nonce('mldpp_preview_slug'),
+            'previewAction' => 'mldpp_preview_slug',
+            'ajaxUrl'      => admin_url('admin-ajax.php'),
+            'i18n'         => array(
+                'previewTitle' => __('Slug previsto:', 'ml-duplicate-posts-pages'),
+                'previewError' => __('Nao foi possivel calcular o slug.', 'ml-duplicate-posts-pages'),
+            ),
         ));
     }
 
@@ -128,6 +136,9 @@ class Plugin {
             'copy_status_mode'         => 'draft',
             'title_prefix'             => '',
             'title_suffix'             => '',
+            'slug_prefix'              => '',
+            'slug_suffix'              => '',
+            'numeric_increment_mode'   => 'last_numeric',
             'roles_allowed'            => array('administrator', 'editor'),
             'log_limit'                => 50,
         );
@@ -179,6 +190,14 @@ class Plugin {
 
         $output['title_prefix'] = '';
         $output['title_suffix'] = '';
+
+        $output['slug_prefix'] = isset($input['slug_prefix']) ? $this->sanitize_slug_token(wp_unslash($input['slug_prefix'])) : '';
+        $output['slug_suffix'] = isset($input['slug_suffix']) ? $this->sanitize_slug_token(wp_unslash($input['slug_suffix'])) : '';
+
+        $allowed_numeric_modes = array('last_numeric', 'append_suffix');
+        $output['numeric_increment_mode'] = (isset($input['numeric_increment_mode']) && in_array($input['numeric_increment_mode'], $allowed_numeric_modes, true))
+            ? $input['numeric_increment_mode']
+            : $defaults['numeric_increment_mode'];
 
         global $wp_roles;
         $valid_roles = !empty($wp_roles->roles) ? array_keys($wp_roles->roles) : array('administrator');
@@ -296,6 +315,10 @@ class Plugin {
             'id'    => 'mldpp-duplicate',
             'title' => __('Duplicar conteúdo', 'ml-duplicate-posts-pages'),
             'href'  => $url,
+            'meta'  => array(
+                'class' => 'mldpp-duplicate-link',
+                'html'  => '<span class="mldpp-preview-slug" data-post-id="' . esc_attr(absint($post->ID)) . '"></span>',
+            ),
         ));
     }
 
@@ -315,8 +338,39 @@ class Plugin {
         );
 
         echo '<div class="misc-pub-section mldpp-submitbox-wrap">';
-        echo '<a class="button button-secondary button-large mldpp-editor-button" href="' . esc_url($url) . '">' . esc_html__('Duplicar este conteúdo', 'ml-duplicate-posts-pages') . '</a>';
+        echo '<a class="button button-secondary button-large mldpp-editor-button mldpp-duplicate-link" data-post-id="' . esc_attr(absint($post->ID)) . '" href="' . esc_url($url) . '">' . esc_html__('Duplicar este conteúdo', 'ml-duplicate-posts-pages') . '</a>';
+        echo '<span class="mldpp-preview-slug" data-post-id="' . esc_attr(absint($post->ID)) . '"></span>';
         echo '</div>';
+    }
+
+    public function ajax_preview_slug() {
+        if (!is_admin()) {
+            wp_send_json_error(array('message' => __('Contexto invalido.', 'ml-duplicate-posts-pages')), 400);
+        }
+
+        if (!$this->current_user_can_duplicate()) {
+            wp_send_json_error(array('message' => __('Sem permissao.', 'ml-duplicate-posts-pages')), 403);
+        }
+
+        check_ajax_referer('mldpp_preview_slug', 'nonce');
+
+        $post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+        $post    = $post_id ? get_post($post_id) : null;
+
+        if (!$post || empty($post->ID)) {
+            wp_send_json_error(array('message' => __('Conteudo nao encontrado.', 'ml-duplicate-posts-pages')), 404);
+        }
+
+        if (!$this->is_post_type_enabled($post->post_type)) {
+            wp_send_json_error(array('message' => __('Tipo de conteudo nao habilitado.', 'ml-duplicate-posts-pages')), 400);
+        }
+
+        $slug = $this->generate_versioned_slug($post);
+
+        wp_send_json_success(array(
+            'slug'      => $slug,
+            'source_id' => (int) $post->ID,
+        ));
     }
 
     public function handle_duplicate_request() {
@@ -428,6 +482,8 @@ class Plugin {
     }
 
     private function generate_versioned_slug($post) {
+        $settings = $this->get_settings();
+
         $base = $this->get_duplicate_slug_base($post);
         $base = sanitize_title($base);
 
@@ -435,25 +491,49 @@ class Plugin {
             $base = 'conteudo-' . absint($post->ID);
         }
 
-        // Quando o slug termina com um número, incrementa esse número final
-        // (ex.: samba-2-guimaraes-212 -> samba-2-guimaraes-213), preservando
-        // qualquer preenchimento com zeros à esquerda. Caso contrário, adiciona
-        // numeração progressiva (ex.: minha-pagina -> minha-pagina-2).
-        if (preg_match('/^(.*?)(\d+)$/', $base, $matches)) {
-            $prefix     = $matches[1];
-            $number_str = $matches[2];
-            $width      = strlen($number_str);
-            $next       = (int) $number_str;
+        $mode = !empty($settings['numeric_increment_mode']) ? $settings['numeric_increment_mode'] : 'last_numeric';
+        $candidate = '';
 
-            do {
-                $next++;
-                $candidate = $prefix . str_pad((string) $next, $width, '0', STR_PAD_LEFT);
-            } while ($this->duplicate_slug_exists($candidate, $post));
-
-            return $candidate;
+        if ($mode === 'last_numeric') {
+            $candidate = $this->increment_last_numeric_token($base, $post);
         }
 
-        $index     = 2;
+        if ($candidate === '') {
+            $candidate = $this->build_with_progressive_number($base, $post);
+        }
+
+        $prefix_token = isset($settings['slug_prefix']) ? (string) $settings['slug_prefix'] : '';
+        $suffix_token = isset($settings['slug_suffix']) ? (string) $settings['slug_suffix'] : '';
+
+        if ($prefix_token !== '' || $suffix_token !== '') {
+            $candidate = $this->apply_slug_tokens($candidate, $prefix_token, $suffix_token, $post);
+        }
+
+        return $candidate;
+    }
+
+    private function increment_last_numeric_token($base, $post) {
+        $tokens = explode('-', $base);
+        for ($i = count($tokens) - 1; $i >= 0; $i--) {
+            if ($tokens[$i] !== '' && ctype_digit($tokens[$i])) {
+                $width = strlen($tokens[$i]);
+                $next  = (int) $tokens[$i];
+
+                do {
+                    $next++;
+                    $tokens[$i] = str_pad((string) $next, $width, '0', STR_PAD_LEFT);
+                    $candidate  = implode('-', $tokens);
+                } while ($this->duplicate_slug_exists($candidate, $post));
+
+                return $candidate;
+            }
+        }
+
+        return '';
+    }
+
+    private function build_with_progressive_number($base, $post) {
+        $index = 2;
         $candidate = $base . '-' . $index;
 
         while ($this->duplicate_slug_exists($candidate, $post)) {
@@ -462,6 +542,35 @@ class Plugin {
         }
 
         return $candidate;
+    }
+
+    private function apply_slug_tokens($slug, $prefix_token, $suffix_token, $post) {
+        $composed = sanitize_title($prefix_token . $slug . $suffix_token);
+
+        if ($composed === '') {
+            return $slug;
+        }
+
+        if (!$this->duplicate_slug_exists($composed, $post)) {
+            return $composed;
+        }
+
+        $index = 2;
+        $candidate = $composed . '-' . $index;
+
+        while ($this->duplicate_slug_exists($candidate, $post)) {
+            $index++;
+            $candidate = $composed . '-' . $index;
+        }
+
+        return $candidate;
+    }
+
+    private function sanitize_slug_token($token) {
+        $cleaned = strtolower(trim((string) $token));
+        $cleaned = preg_replace('/[^a-z0-9\-_]/', '', $cleaned);
+        $cleaned = trim($cleaned, '-_');
+        return $cleaned;
     }
 
     private function get_duplicate_slug_base($post) {
@@ -652,14 +761,14 @@ class Plugin {
         update_post_meta($new_post_id, '_mldpp_duplicated_at', current_time('mysql'));
         update_post_meta($new_post_id, '_mldpp_duplicated_by', get_current_user_id());
 
-        $this->write_log($post->ID, $new_post_id, $post->post_type, $target_status);
+        $this->write_log($post->ID, $new_post_id, $post->post_type, $target_status, $new_slug);
 
         do_action('mldpp_after_duplicate_post', $new_post_id, $post->ID, $post);
 
         return $new_post_id;
     }
 
-    private function write_log($source_id, $new_id, $post_type, $new_status) {
+    private function write_log($source_id, $new_id, $post_type, $new_status, $new_slug = '') {
         $settings = $this->get_settings();
         $logs = get_option($this->log_option_name, array());
         if (!is_array($logs)) {
@@ -673,6 +782,7 @@ class Plugin {
             'new_id'     => (int) $new_id,
             'post_type'  => sanitize_key($post_type),
             'new_status' => sanitize_key($new_status),
+            'new_slug'   => sanitize_title($new_slug),
             'user_id'    => get_current_user_id(),
             'user_name'  => $user && !empty($user->display_name) ? $user->display_name : '',
         );
@@ -702,7 +812,27 @@ class Plugin {
 
     private function get_logs() {
         $logs = get_option($this->log_option_name, array());
-        return is_array($logs) ? array_reverse($logs) : array();
+        if (!is_array($logs)) {
+            return array();
+        }
+
+        $migrated = false;
+        foreach ($logs as $i => $log) {
+            if (!is_array($log)) {
+                continue;
+            }
+            if (!array_key_exists('new_slug', $log)) {
+                $new_post = !empty($log['new_id']) ? get_post((int) $log['new_id']) : null;
+                $logs[$i]['new_slug'] = ($new_post && !empty($new_post->post_name)) ? sanitize_title($new_post->post_name) : '';
+                $migrated = true;
+            }
+        }
+
+        if ($migrated) {
+            update_option($this->log_option_name, $logs, false);
+        }
+
+        return array_reverse($logs);
     }
 
     public function render_dashboard() {
@@ -776,9 +906,35 @@ class Plugin {
                             <tr>
                                 <th scope="row">Título e slug da cópia</th>
                                 <td>
-                                    <p class="description">O título original é preservado automaticamente. O slug da cópia recebe numeração progressiva baseada no slug original.</p>
-                                    <p class="description">Quando o slug termina com número, o número final é incrementado. Exemplo: <code>samba-2-guimaraes-212</code> → <code>samba-2-guimaraes-213</code>.</p>
-                                    <p class="description">Quando o slug não termina com número, é adicionada numeração progressiva. Exemplo: <code>minha-pagina</code> → <code>minha-pagina-2</code>, <code>minha-pagina-3</code>.</p>
+                                    <p class="description">O título original é preservado automaticamente. O slug da cópia recebe versionamento inteligente baseado no slug original.</p>
+                                    <p class="description">Detecção do último bloco numérico: <code>samba-2-guimaraes-212</code> → <code>samba-2-guimaraes-213</code>, <code>pagina-15-historia</code> → <code>pagina-16-historia</code>, <code>post-007</code> → <code>post-008</code>. Quando não há número, numeração progressiva: <code>minha-pagina</code> → <code>minha-pagina-2</code>, <code>minha-pagina-3</code>.</p>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row"><label for="mldpp-slug-prefix">Prefixo do slug (opcional)</label></th>
+                                <td>
+                                    <input type="text" id="mldpp-slug-prefix" class="regular-text" name="<?php echo esc_attr($this->option_name); ?>[slug_prefix]" value="<?php echo esc_attr($settings['slug_prefix']); ?>" placeholder="ex: copy-of">
+                                    <p class="description">Texto fixo adicionado antes do slug versionado. Use letras, números, hífens ou underscore. Ex.: <code>copy-of</code> + <code>minha-pagina-2</code> = <code>copy-of-minha-pagina-2</code>.</p>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row"><label for="mldpp-slug-suffix">Sufixo do slug (opcional)</label></th>
+                                <td>
+                                    <input type="text" id="mldpp-slug-suffix" class="regular-text" name="<?php echo esc_attr($this->option_name); ?>[slug_suffix]" value="<?php echo esc_attr($settings['slug_suffix']); ?>" placeholder="ex: -copy">
+                                    <p class="description">Texto fixo adicionado depois do slug versionado. Ex.: <code>minha-pagina-2</code> + <code>-copy</code> = <code>minha-pagina-2-copy</code>.</p>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row"><label for="mldpp-numeric-mode">Modo de incremento numérico</label></th>
+                                <td>
+                                    <select id="mldpp-numeric-mode" name="<?php echo esc_attr($this->option_name); ?>[numeric_increment_mode]">
+                                        <option value="last_numeric" <?php selected($settings['numeric_increment_mode'], 'last_numeric'); ?>>Incrementar último número (recomendado)</option>
+                                        <option value="append_suffix" <?php selected($settings['numeric_increment_mode'], 'append_suffix'); ?>>Sempre sufixo -2, -3…</option>
+                                    </select>
+                                    <p class="description">"Incrementar último número" preserva contexto (ex.: <code>pagina-15-historia</code> → <code>pagina-16-historia</code>). "Sempre sufixo" usa <code>-2</code> no fim da slug original.</p>
                                 </td>
                             </tr>
 
@@ -893,6 +1049,7 @@ class Plugin {
                                         <th>Tipo</th>
                                         <th>Origem</th>
                                         <th>Nova cópia</th>
+                                        <th>Slug gerado</th>
                                         <th>Status</th>
                                         <th>Usuário</th>
                                     </tr>
@@ -904,6 +1061,7 @@ class Plugin {
                                             <td><?php echo esc_html($log['post_type']); ?></td>
                                             <td><a href="<?php echo esc_url(get_edit_post_link($log['source_id'])); ?>">#<?php echo esc_html($log['source_id']); ?></a></td>
                                             <td><a href="<?php echo esc_url(get_edit_post_link($log['new_id'])); ?>">#<?php echo esc_html($log['new_id']); ?></a></td>
+                                            <td><code class="mldpp-slug-cell"><?php echo esc_html(!empty($log['new_slug']) ? $log['new_slug'] : '-'); ?></code></td>
                                             <td><?php echo esc_html($log['new_status']); ?></td>
                                             <td><?php echo esc_html($log['user_name']); ?></td>
                                         </tr>

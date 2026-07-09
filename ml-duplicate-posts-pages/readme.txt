@@ -4,7 +4,7 @@ Tags: duplicate, duplicate post, duplicate page, cpt
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.1.2
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,18 @@ ML Duplicate Posts & Pages permite duplicar conteúdos do WordPress com mais con
 4. Configure os tipos de conteúdo e opções de cópia
 
 == Changelog ==
+
+= 1.2.0 =
+* Adicionado: deteccao inteligente do ultimo bloco numerico da slug. Slugs como `pagina-15-historia` agora incrementam o numero interno e viram `pagina-16-historia`. Slugs com multiplos tokens numericos (`foo-2-bar-7-baz`) incrementam apenas o ultimo bloco.
+* Adicionado: modo alternativo de incremento (`append_suffix`) para quem prefere o comportamento tradicional de sempre usar sufixo `-2`, `-3`.
+* Adicionado: campos `slug_prefix` e `slug_suffix` nas configuracoes para prefixar/sufixar a slug versionada. Aceitam letras, numeros, hifens e underscore.
+* Adicionado: endpoint AJAX `mldpp_preview_slug` para calcular o slug previsto de uma duplicacao sem executa-la.
+* Adicionado: tooltip de pre-visualizacao no botao "Duplicar este conteudo" do editor classico e no item "Duplicar conteudo" da admin bar.
+* Adicionado: coluna "Slug gerado" na tabela de logs para auditoria de URLs geradas.
+* Adicionado: migracao silenciosa de logs antigos - entradas sem `new_slug` sao preenchidas com o `post_name` da copia na primeira leitura apos o upgrade.
+* Corrigido: o `sanitize_settings()` rejeita tokens invalidos para `slug_prefix` e `slug_suffix` atraves do helper `sanitize_slug_token()`.
+* Compatibilidade: declarado suporte a WordPress 6.8 (Tested up to) e PHP 7.4+. Padroes de codigo seguem o PSR-12 informalmente.
+* Documentacao: descricao das configuracoes no painel reflete o novo comportamento de increment e os exemplos atualizados.
 
 = 1.1.2 =
 * Adicionado: arquivo uninstall.php para limpeza de opcoes e transients quando o plugin e desinstalado pelo WordPress.
