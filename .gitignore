@@ -1,0 +1,22 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+debug.log
+
+# Env
+.env
+.env.local
+
+# Build artifacts
+node_modules/
+vendor/
+*.zip
+!ml-duplicate-posts-pages-*.zip
