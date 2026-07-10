@@ -4,7 +4,7 @@ Tags: duplicate, duplicate post, duplicate page, cpt
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.2.1
+Stable tag: 1.2.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,14 @@ ML Duplicate Posts & Pages permite duplicar conteúdos do WordPress com mais con
 4. Configure os tipos de conteúdo e opções de cópia
 
 == Changelog ==
+
+= 1.2.2 =
+* Adicionado: botao "ML Duplicate" na admin bar do WordPress (topo) com sub-itens "Verificar atualizacao agora" e "Diagnostico do updater". Visivel para usuarios com capability `update_plugins`.
+* Adicionado: handler `mldpp_force_check` (autenticado por nonce e capability) que limpa os transients `mldpp_github_release` e `update_plugins`, chama `wp_update_plugins()` para forcar a rechecagem, e redireciona com notice indicando se ha update disponivel ou se a versao local ja e a mais recente.
+* Adicionado: botao "Verificar atualizacao" no topo da pagina ML Duplicate com icone `dashicons-update`.
+* Adicionado: card de diagnostico acessivel por `?mldpp_debug=1` na URL da pagina ML Duplicate. Exibe em tempo real: versao local, versao remota, resultado de `version_compare`, status HTTP da GitHub API, conteudo do transient do updater, transient do WP (`update_plugins` -> `checked` e `response`), lista de assets da release e link direto para a release.
+* Adicionado: CSS especifico para o icone da admin bar (`#wpadminbar .mldpp-admin-bar-updater`) e para o card de debug (pre formatado com scroll e bordas).
+* Documentacao: changelog refletindo o novo fluxo de verificacao manual de atualizacao.
 
 = 1.2.1 =
 * Corrigido: o CI workflow passa a usar `permissions: contents: write` no job e `overwrite_files: true` para conseguir atualizar releases ja publicadas. Adicionado step de aviso quando o `GITHUB_TOKEN` automatico nao tem permissao suficiente, indicando o uso do secret `GH_RELEASE_TOKEN` com PAT.

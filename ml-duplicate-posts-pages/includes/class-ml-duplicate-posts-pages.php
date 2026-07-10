@@ -35,6 +35,7 @@ class Plugin {
         add_action('admin_init', array($this, 'register_settings'));
         add_action('admin_init', array($this, 'handle_duplicate_request'));
         add_action('admin_init', array($this, 'handle_bulk_duplicate_request'));
+        add_action('admin_init', array($this, 'force_check_for_update'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
         add_action('wp_ajax_mldpp_preview_slug', array($this, 'ajax_preview_slug'));
 
@@ -46,6 +47,7 @@ class Plugin {
         add_filter('handle_bulk_actions-edit-page', array($this, 'handle_native_bulk_action_redirect'), 10, 3);
 
         add_action('admin_bar_menu', array($this, 'add_admin_bar_button'), 90);
+        add_action('admin_bar_menu', array($this, 'add_admin_bar_updater_node'), 95);
         add_action('post_submitbox_misc_actions', array($this, 'render_submitbox_button'));
         add_action('admin_notices', array($this, 'render_admin_notices'));
 
@@ -338,6 +340,78 @@ class Plugin {
         ), $redirect_to);
     }
 
+    public function add_admin_bar_updater_node($wp_admin_bar) {
+        if (!is_user_logged_in() || !current_user_can('update_plugins')) {
+            return;
+        }
+
+        $force_url = wp_nonce_url(
+            admin_url('admin.php?action=mldpp_force_check'),
+            'mldpp_force_check'
+        );
+
+        $debug_url = add_query_arg('mldpp_debug', '1', admin_url('admin.php?page=mldpp-dashboard'));
+
+        $wp_admin_bar->add_node(array(
+            'id'    => 'mldpp-updater',
+            'title' => '<span class="ab-icon dashicons-update" aria-hidden="true"></span><span class="ab-label">' . esc_html__('ML Duplicate', 'ml-duplicate-posts-pages') . '</span>',
+            'href'  => $force_url,
+            'meta'  => array(
+                'title' => esc_attr__('ML Duplicate - forcar verificacao de atualizacao', 'ml-duplicate-posts-pages'),
+                'class' => 'mldpp-admin-bar-updater',
+            ),
+        ));
+
+        $wp_admin_bar->add_node(array(
+            'id'     => 'mldpp-updater-check',
+            'parent' => 'mldpp-updater',
+            'title'  => esc_html__('Verificar atualizacao agora', 'ml-duplicate-posts-pages'),
+            'href'   => $force_url,
+        ));
+
+        $wp_admin_bar->add_node(array(
+            'id'     => 'mldpp-updater-debug',
+            'parent' => 'mldpp-updater',
+            'title'  => esc_html__('Diagnostico do updater', 'ml-duplicate-posts-pages'),
+            'href'   => $debug_url,
+        ));
+    }
+
+    public function force_check_for_update() {
+        if (!is_admin() || empty($_GET['action']) || $_GET['action'] !== 'mldpp_force_check') {
+            return;
+        }
+
+        if (!current_user_can('update_plugins')) {
+            wp_die(esc_html__('Voce nao tem permissao para verificar atualizacoes.', 'ml-duplicate-posts-pages'));
+        }
+
+        check_admin_referer('mldpp_force_check');
+
+        delete_transient('mldpp_github_release');
+        delete_site_transient('update_plugins');
+
+        if (function_exists('wp_update_plugins')) {
+            wp_update_plugins();
+        }
+
+        $update_plugins = get_site_transient('update_plugins');
+        $has_update     = is_object($update_plugins) && !empty($update_plugins->response[MLDPP_BASENAME]);
+
+        $redirect = wp_get_referer();
+        if (!$redirect) {
+            $redirect = admin_url('plugins.php');
+        }
+
+        $redirect = add_query_arg(array(
+            'mldpp_force_checked' => 1,
+            'mldpp_has_update'    => $has_update ? 1 : 0,
+        ), $redirect);
+
+        wp_safe_redirect($redirect);
+        exit;
+    }
+
     public function add_admin_bar_button($wp_admin_bar) {
         if (!is_admin() || !is_singular()) {
             return;
@@ -518,6 +592,34 @@ class Plugin {
 
         if (!empty($_GET['mldpp_error_msg'])) {
             echo '<div class="notice notice-error is-dismissible"><p>' . esc_html(rawurldecode(wp_unslash($_GET['mldpp_error_msg']))) . '</p></div>';
+        }
+
+        if (!empty($_GET['mldpp_force_checked'])) {
+            $has_update = !empty($_GET['mldpp_has_update']);
+            $type       = $has_update ? 'success' : 'info';
+            $version    = MLDPP_VERSION;
+
+            if ($has_update) {
+                $update_plugins = get_site_transient('update_plugins');
+                $new_version    = '';
+                if (is_object($update_plugins) && !empty($update_plugins->response[MLDPP_BASENAME]->new_version)) {
+                    $new_version = $update_plugins->response[MLDPP_BASENAME]->new_version;
+                }
+                $message = sprintf(
+                    /* translators: 1: current version, 2: new version */
+                    esc_html__('Atualizacao disponivel para ML Duplicate: %1$s -> %2$s. Acesse a pagina de atualizacoes para instalar.', 'ml-duplicate-posts-pages'),
+                    $version,
+                    $new_version ?: '?'
+                );
+            } else {
+                $message = sprintf(
+                    /* translators: %s: current version */
+                    esc_html__('Rechecagem concluida. ML Duplicate %s ja esta na versao mais recente.', 'ml-duplicate-posts-pages'),
+                    $version
+                );
+            }
+
+            echo '<div class="notice notice-' . esc_attr($type) . ' is-dismissible"><p>' . $message . '</p></div>';
         }
 
         foreach ($this->notices as $notice) {
@@ -899,6 +1001,15 @@ class Plugin {
                     <p>Duplicação profissional de conteúdos do WordPress com controle do que copiar, compatibilidade com posts, páginas e CPTs, ação em massa e registro de atividades.</p>
                 </div>
                 <div class="mldpp-hero__right">
+                    <?php
+                    $force_check_url = wp_nonce_url(admin_url('admin.php?action=mldpp_force_check'), 'mldpp_force_check');
+                    $debug_url       = add_query_arg('mldpp_debug', '1');
+                    $is_debug        = !empty($_GET['mldpp_debug']);
+                    ?>
+                    <a class="button button-secondary button-hero mldpp-force-check" href="<?php echo esc_url($force_check_url); ?>" style="margin-right:8px;">
+                        <span class="dashicons dashicons-update" aria-hidden="true"></span>
+                        <?php esc_html_e('Verificar atualizacao', 'ml-duplicate-posts-pages'); ?>
+                    </a>
                     <a class="button button-primary button-hero" href="<?php echo esc_url(admin_url('edit.php')); ?>">Abrir listagem de conteúdos</a>
                 </div>
             </div>
@@ -1118,6 +1229,137 @@ class Plugin {
                     <?php endif; ?>
                 </div>
             </div>
+
+            <?php if (!empty($_GET['mldpp_debug'])) : ?>
+                <?php
+                $debug_force_url = wp_nonce_url(admin_url('admin.php?action=mldpp_force_check'), 'mldpp_force_check');
+                $debug_api_url   = sprintf('https://api.github.com/repos/%s/%s/releases/latest', rawurlencode(MLDPP_GITHUB_OWNER), rawurlencode(MLDPP_GITHUB_REPO));
+
+                $debug_response = wp_remote_get($debug_api_url, array(
+                    'timeout' => 12,
+                    'headers' => array(
+                        'Accept'     => 'application/vnd.github+json',
+                        'User-Agent' => 'WordPress/' . get_bloginfo('version') . '; ' . home_url('/'),
+                    ),
+                ));
+
+                $debug_remote_version   = '-';
+                $debug_remote_published = '-';
+                $debug_remote_url       = '-';
+                $debug_remote_assets    = array();
+                $debug_api_status       = is_wp_error($debug_response) ? 'erro: ' . $debug_response->get_error_message() : wp_remote_retrieve_response_code($debug_response);
+                $debug_api_body         = '';
+
+                if (!is_wp_error($debug_response) && (int) $debug_api_status >= 200 && (int) $debug_api_status < 300) {
+                    $debug_api_body         = wp_remote_retrieve_body($debug_response);
+                    $debug_api_decoded      = json_decode($debug_api_body, true);
+                    $debug_remote_version   = is_array($debug_api_decoded) && !empty($debug_api_decoded['tag_name']) ? ltrim((string) $debug_api_decoded['tag_name'], 'vV') : '-';
+                    $debug_remote_published = is_array($debug_api_decoded) && !empty($debug_api_decoded['published_at']) ? $debug_api_decoded['published_at'] : '-';
+                    $debug_remote_url       = is_array($debug_api_decoded) && !empty($debug_api_decoded['html_url']) ? $debug_api_decoded['html_url'] : '-';
+                    $debug_remote_assets    = is_array($debug_api_decoded) && !empty($debug_api_decoded['assets']) ? $debug_api_decoded['assets'] : array();
+                }
+
+                $debug_cached_release = get_transient('mldpp_github_release');
+                $debug_wp_transient   = get_site_transient('update_plugins');
+                $debug_wp_response    = is_object($debug_wp_transient) && !empty($debug_wp_transient->response[MLDPP_BASENAME]) ? $debug_wp_transient->response[MLDPP_BASENAME] : null;
+                $debug_wp_checked     = is_object($debug_wp_transient) && !empty($debug_wp_transient->checked) ? $debug_wp_transient->checked : array();
+                $debug_has_basename   = !empty($debug_wp_checked[MLDPP_BASENAME]);
+                ?>
+                <div class="mldpp-card mldpp-debug-card">
+                    <h2><?php esc_html_e('Diagnostico do updater', 'ml-duplicate-posts-pages'); ?></h2>
+                    <p class="description"><?php esc_html_e('Informacoes em tempo real sobre o mecanismo de atualizacao. Use quando o painel do WordPress nao exibir a nova versao.', 'ml-duplicate-posts-pages'); ?></p>
+                    <table class="widefat striped" style="margin-top:12px;">
+                        <tbody>
+                            <tr>
+                                <th style="width:35%;"><?php esc_html_e('Versao local (MLDPP_VERSION)', 'ml-duplicate-posts-pages'); ?></th>
+                                <td><code><?php echo esc_html(MLDPP_VERSION); ?></code></td>
+                            </tr>
+                            <tr>
+                                <th><?php esc_html_e('Slug do plugin (MLDPP_BASENAME)', 'ml-duplicate-posts-pages'); ?></th>
+                                <td><code><?php echo esc_html(MLDPP_BASENAME); ?></code></td>
+                            </tr>
+                            <tr>
+                                <th><?php esc_html_e('Versao remota (GitHub latest)', 'ml-duplicate-posts-pages'); ?></th>
+                                <td><code><?php echo esc_html($debug_remote_version); ?></code> <small>(publicada em <?php echo esc_html($debug_remote_published); ?>)</small></td>
+                            </tr>
+                            <tr>
+                                <th><?php esc_html_e('Comparacao version_compare', 'ml-duplicate-posts-pages'); ?></th>
+                                <td>
+                                    <?php
+                                    if ($debug_remote_version !== '-' && MLDPP_VERSION !== '-') {
+                                        $cmp = version_compare($debug_remote_version, MLDPP_VERSION, '<=');
+                                        echo $cmp
+                                            ? '<span style="color:#1e8cbe;">igual ou inferior - nenhum update sera exibido</span>'
+                                            : '<span style="color:#1a7a3c;font-weight:600;">update disponivel</span>';
+                                    } else {
+                                        echo '-';
+                                    }
+                                    ?>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><?php esc_html_e('Status HTTP GitHub API', 'ml-duplicate-posts-pages'); ?></th>
+                                <td><code><?php echo esc_html($debug_api_status); ?></code></td>
+                            </tr>
+                            <tr>
+                                <th><?php esc_html_e('Transient do updater (mldpp_github_release)', 'ml-duplicate-posts-pages'); ?></th>
+                                <td>
+                                    <?php if (is_array($debug_cached_release)) : ?>
+                                        <pre style="margin:0;white-space:pre-wrap;word-break:break-all;"><?php echo esc_html(wp_json_encode($debug_cached_release, JSON_PRETTY_PRINT)); ?></pre>
+                                    <?php else : ?>
+                                        <em><?php esc_html_e('vazio ou expirado', 'ml-duplicate-posts-pages'); ?></em>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><?php esc_html_e('Transient do WP (update_plugins)', 'ml-duplicate-posts-pages'); ?></th>
+                                <td>
+                                    <strong><?php esc_html_e('checked[MLDPP_BASENAME]:', 'ml-duplicate-posts-pages'); ?></strong>
+                                    <?php if ($debug_has_basename) : ?>
+                                        <code><?php echo esc_html($debug_wp_checked[MLDPP_BASENAME]); ?></code>
+                                    <?php else : ?>
+                                        <em><?php esc_html_e('ausente - WP nao reconhece o plugin no momento da checagem', 'ml-duplicate-posts-pages'); ?></em>
+                                    <?php endif; ?>
+                                    <br>
+                                    <strong><?php esc_html_e('response[MLDPP_BASENAME]:', 'ml-duplicate-posts-pages'); ?></strong>
+                                    <?php if ($debug_wp_response) : ?>
+                                        <pre style="margin:0;white-space:pre-wrap;word-break:break-all;"><?php echo esc_html(wp_json_encode($debug_wp_response, JSON_PRETTY_PRINT)); ?></pre>
+                                    <?php else : ?>
+                                        <em><?php esc_html_e('ausente - nenhum update reportado para o plugin', 'ml-duplicate-posts-pages'); ?></em>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><?php esc_html_e('Assets da release remota', 'ml-duplicate-posts-pages'); ?></th>
+                                <td>
+                                    <?php if (empty($debug_remote_assets)) : ?>
+                                        <em><?php esc_html_e('nenhum asset encontrado', 'ml-duplicate-posts-pages'); ?></em>
+                                    <?php else : ?>
+                                        <ul style="margin:0;">
+                                            <?php foreach ($debug_remote_assets as $asset) : ?>
+                                                <li>
+                                                    <code><?php echo esc_html(!empty($asset['name']) ? $asset['name'] : '?'); ?></code>
+                                                    (<?php echo esc_html(!empty($asset['size']) ? size_format($asset['size']) : '?'); ?>)
+                                                    &mdash;
+                                                    <a href="<?php echo esc_url(!empty($asset['browser_download_url']) ? $asset['browser_download_url'] : '#'); ?>" target="_blank" rel="noopener noreferrer">download</a>
+                                                </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><?php esc_html_e('URL da release', 'ml-duplicate-posts-pages'); ?></th>
+                                <td><a href="<?php echo esc_url($debug_remote_url); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html($debug_remote_url); ?></a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p style="margin-top:14px;">
+                        <a class="button button-secondary" href="<?php echo esc_url($debug_force_url); ?>"><?php esc_html_e('Forcar rechecagem agora', 'ml-duplicate-posts-pages'); ?></a>
+                        <a class="button button-link" href="<?php echo esc_url(remove_query_arg('mldpp_debug')); ?>"><?php esc_html_e('Fechar diagnostico', 'ml-duplicate-posts-pages'); ?></a>
+                    </p>
+                </div>
+            <?php endif; ?>
         </div>
         <?php
     }
