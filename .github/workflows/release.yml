@@ -43,11 +43,12 @@ jobs:
           VERSION="${{ steps.version.outputs.VERSION }}"
           ZIP_NAME="${SLUG}-${VERSION}.zip"
           rm -f "$ZIP_NAME"
-          cd ..
-          zip -r "$GITHUB_WORKSPACE/$ZIP_NAME" "$SLUG" \
-            -x "*.git*" "*.DS_Store" "node_modules/*" "vendor/*"
-          cd "$GITHUB_WORKSPACE"
+          zip -r "$ZIP_NAME" "$SLUG/" \
+            -x "*.git*" "*.DS_Store" "node_modules/*" "vendor/*" \
+            -x "${SLUG}/.git*" "${SLUG}/.github/*"
           ls -la "$ZIP_NAME"
+          echo "=== ZIP structure (top 25 entries) ==="
+          unzip -l "$ZIP_NAME" | head -25
 
       - name: Compute SHA-256
         id: sha
