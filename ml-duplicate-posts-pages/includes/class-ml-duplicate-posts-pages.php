@@ -66,6 +66,52 @@ class Plugin {
             'dashicons-admin-page',
             58
         );
+
+        if ($this->screen_hook) {
+            add_action('load-' . $this->screen_hook, array($this, 'register_help_tabs'));
+        }
+    }
+
+    public function register_help_tabs() {
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if (!$screen) {
+            return;
+        }
+
+        $screen->add_help_tab(array(
+            'id'      => 'mldpp-how-to-use',
+            'title'   => __('Como usar', 'ml-duplicate-posts-pages'),
+            'content' => '<p>' . esc_html__('Use a acao rapida "Duplicar" na listagem de posts/paginas, a acao em massa nativa do WordPress, ou o botao "Duplicar este conteudo" no editor classico para criar uma copia.', 'ml-duplicate-posts-pages') . '</p>'
+                . '<p>' . esc_html__('Em "ML Duplicate" voce tambem encontra a duplicacao em lote com filtros por tipo, status e busca no conteudo.', 'ml-duplicate-posts-pages') . '</p>',
+        ));
+
+        $screen->add_help_tab(array(
+            'id'      => 'mldpp-slug-rules',
+            'title'   => __('Regras de slug', 'ml-duplicate-posts-pages'),
+            'content' => '<p>' . esc_html__('O titulo original e preservado. O slug da copia e versionado automaticamente:', 'ml-duplicate-posts-pages') . '</p>'
+                . '<ul>'
+                . '<li><code>samba-2-guimaraes-215</code> &rarr; <code>samba-2-guimaraes-216</code></li>'
+                . '<li><code>pagina-15-historia</code> &rarr; <code>pagina-16-historia</code></li>'
+                . '<li><code>foo-2-bar-7-baz</code> &rarr; <code>foo-2-bar-8-baz</code></li>'
+                . '<li><code>post-007</code> &rarr; <code>post-008</code> (preserva zero a esquerda)</li>'
+                . '<li><code>minha-pagina</code> &rarr; <code>minha-pagina-2</code></li>'
+                . '</ul>'
+                . '<p>' . esc_html__('Voce pode usar os campos slug_prefix e slug_suffix para prefixar/sufixar o slug versionado.', 'ml-duplicate-posts-pages') . '</p>'
+                . '<p>' . esc_html__('O modo append_suffix usa sempre o sufixo -2, -3... ignorando a deteccao do ultimo numero.', 'ml-duplicate-posts-pages') . '</p>',
+        ));
+
+        $screen->add_help_tab(array(
+            'id'      => 'mldpp-compat',
+            'title'   => __('Compatibilidade', 'ml-duplicate-posts-pages'),
+            'content' => '<p>' . esc_html__('WordPress 5.8 ou superior (testado ate 6.8). PHP 7.4 ou superior.', 'ml-duplicate-posts-pages') . '</p>'
+                . '<p>' . esc_html__('Atualizacao automatica via GitHub Releases. Configuracoes sao preservadas em todas as atualizacoes.', 'ml-duplicate-posts-pages') . '</p>'
+                . '<p>' . esc_html__('Suporte a qualquer custom post type com interface administrativa. Page templates, meta keys (exceto chaves internas do WP) e taxonomias sao copiados.', 'ml-duplicate-posts-pages') . '</p>',
+        ));
+
+        $screen->set_help_sidebar('<p><strong>' . esc_html__('ML Duplicate Posts & Pages', 'ml-duplicate-posts-pages') . '</strong></p>'
+            . '<p>' . esc_html__('Documentacao e suporte no GitHub do projeto.', 'ml-duplicate-posts-pages') . '</p>'
+            . '<p><a href="' . esc_url(MLDPP_GITHUB_REPO_URL) . '" target="_blank" rel="noopener noreferrer">' . esc_html__('Abrir repositorio', 'ml-duplicate-posts-pages') . '</a></p>'
+            . '<p><a href="' . esc_url(MLDPP_GITHUB_REPO_URL . '/releases') . '" target="_blank" rel="noopener noreferrer">' . esc_html__('Ver changelog', 'ml-duplicate-posts-pages') . '</a></p>');
     }
 
     public function register_settings() {

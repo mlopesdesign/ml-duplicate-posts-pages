@@ -4,21 +4,38 @@ Plugin comercial WordPress para duplicacao profissional de posts, paginas e CPTs
 com controle granular do que copiar, acao rapida, acao em massa, logs e painel
 administrativo no padrao ML.
 
-## Recursos
+## Ultima release
+
+**v1.2.1** - patch com correcao do CI workflow, help tabs no painel, arquivo de traducao `.pot` e README atualizado.
+
+Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages/releases/tag/v1.2.1
+
+## Recursos (v1.2.x)
 
 - Duplicacao de posts, paginas e custom post types
 - Acao rapida "Duplicar" na listagem
 - Acao em massa nativa do WordPress
-- Botao no editor do conteudo
-- Botao no admin bar
+- Botao no editor classico e item no admin bar
 - Duplicacao manual em lote com filtros (tipo, status, busca)
 - Escolha granular: imagem destacada, taxonomias, meta, comentarios, autor,
   template, ordem de menu
 - Preservacao do titulo original
-- Versionamento inteligente de slug (incrementa numero final quando existe)
-- Logs de duplicacao com autor e timestamp
+- **Versionamento inteligente de slug** com deteccao do ULTIMO bloco numerico:
+  - `samba-2-guimaraes-215` -> `samba-2-guimaraes-216`
+  - `pagina-15-historia` -> `pagina-16-historia`
+  - `foo-2-bar-7-baz` -> `foo-2-bar-8-baz`
+  - `post-007` -> `post-008` (preservando zero a esquerda)
+- **Modo alternativo** `append_suffix` (sempre sufixo `-2`) para quem prefere o
+  comportamento tradicional
+- **Tokens customizados** `slug_prefix` e `slug_suffix` (ex.: `copy-of-{slug}`,
+  `{slug}-copy`, `cloned-{slug}-v2`)
+- **Preview via AJAX** com tooltip no botao do editor e no admin bar
+- **Coluna "Slug gerado"** na tabela de logs
+- **Help tabs** no painel admin (Como usar / Slug / Compatibilidade)
+- **Arquivo `.pot`** pronto para traducoes
 - Painel administrativo com hero, cards e tabela de logs
 - Atualizacao automatica via GitHub Releases
+- `uninstall.php` para limpeza completa na desinstalacao
 
 ## Estrutura do repositorio
 
@@ -27,12 +44,15 @@ ml-duplicate-posts-pages/
 ├── ml-duplicate-posts-pages.php
 ├── readme.txt
 ├── uninstall.php
+├── README.md
 ├── assets/
 │   ├── css/admin.css
 │   └── js/admin.js
-└── includes/
-    ├── class-ml-duplicate-posts-pages.php
-    └── class-mldpp-github-updater.php
+├── includes/
+│   ├── class-ml-duplicate-posts-pages.php
+│   └── class-mldpp-github-updater.php
+└── languages/
+    └── ml-duplicate-posts-pages.pot
 ```
 
 ## Instalacao local
@@ -51,5 +71,14 @@ A instalacao ocorre sem perder configuracoes.
 ## CI / Release
 
 O workflow em `.github/workflows/release.yml` re-empacota automaticamente o source
-em um ZIP padronizado a cada push de tag `v*`, computa SHA-256 e publica como
-asset da GitHub Release.
+em um ZIP padronizado a cada push de tag `v*`, valida sintaxe PHP/JS, computa
+SHA-256 e publica como asset da GitHub Release (com `overwrite_files: true`).
+
+### Permissoes do CI
+
+O workflow usa `permissions: contents: write` no job e o `GITHUB_TOKEN` automatico
+para criar/atualizar o asset. Em caso de erro `Resource not accessible by integration`
+(o `GITHUB_TOKEN` automatico nao tem permissao de update de release existente),
+configure um Personal Access Token (PAT) com escopo `contents: write` como secret
+`GH_RELEASE_TOKEN` no repositorio. Para usar o PAT, troque a referencia
+`secrets.GITHUB_TOKEN` por `secrets.GH_RELEASE_TOKEN` no step `Upload release asset`.

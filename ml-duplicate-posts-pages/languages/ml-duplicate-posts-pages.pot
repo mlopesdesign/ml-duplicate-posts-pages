@@ -1,0 +1,142 @@
+# Copyright (C) 2026 MLopesDesign
+# This file is distributed under the GPLv2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: ML Duplicate Posts & Pages 1.2.1\n"
+"Report-Msgid-Bugs-To: https://github.com/mlopesdesign/ml-duplicate-posts-pages/issues\n"
+"POT-Creation-Date: 2026-07-10 06:21:25\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"X-Generator: Mavis pot-generator 1.0\n"
+"X-Domain: ml-duplicate-posts-pages\n"
+
+#: Source files: ml-duplicate-posts-pages.php, includes/class-ml-duplicate-posts-pages.php, includes/class-mldpp-github-updater.php, uninstall.php
+#: Total strings: 41
+
+msgid "%d cópia criada com sucesso."
+msgstr ""
+
+msgid "%d cópias criadas com sucesso."
+msgstr ""
+
+msgid "Abrir repositorio"
+msgstr ""
+
+msgid "Atualizacao automatica via GitHub Releases. Configuracoes sao preservadas em todas as atualizacoes."
+msgstr ""
+
+msgid "Changelog"
+msgstr ""
+
+msgid "Como usar"
+msgstr ""
+
+msgid "Compatibilidade"
+msgstr ""
+
+msgid "Configurações"
+msgstr ""
+
+msgid "Conteudo nao encontrado."
+msgstr ""
+
+msgid "Contexto invalido."
+msgstr ""
+
+msgid "Conteúdo duplicado com sucesso."
+msgstr ""
+
+msgid "Conteúdo original não encontrado."
+msgstr ""
+
+msgid "Documentacao e suporte no GitHub do projeto."
+msgstr ""
+
+msgid "Duplicar"
+msgstr ""
+
+msgid "Duplicar conteúdo"
+msgstr ""
+
+msgid "Duplicar este conteúdo"
+msgstr ""
+
+msgid "Em \"ML Duplicate\" voce tambem encontra a duplicacao em lote com filtros por tipo, status e busca no conteudo."
+msgstr ""
+
+msgid "Este tipo de conteúdo não está habilitado para duplicação."
+msgstr ""
+
+msgid "Este tipo de conteúdo não está habilitado."
+msgstr ""
+
+msgid "Link copiado."
+msgstr ""
+
+msgid "ML Duplicate Posts & Pages"
+msgstr ""
+
+msgid "Nao foi possivel calcular o slug."
+msgstr ""
+
+msgid "Notas da versao"
+msgstr ""
+
+msgid "O modo append_suffix usa sempre o sufixo -2, -3... ignorando a deteccao do ultimo numero."
+msgstr ""
+
+msgid "O titulo original e preservado. O slug da copia e versionado automaticamente:"
+msgstr ""
+
+msgid "Post inválido."
+msgstr ""
+
+msgid "Regras de slug"
+msgstr ""
+
+msgid "Repositorio"
+msgstr ""
+
+msgid "Sem permissao."
+msgstr ""
+
+msgid "Sem permissão para duplicar este conteúdo."
+msgstr ""
+
+msgid "Slug previsto:"
+msgstr ""
+
+msgid "Suporte a qualquer custom post type com interface administrativa. Page templates, meta keys (exceto chaves internas do WP) e taxonomias sao copiados."
+msgstr ""
+
+msgid "Tipo de conteudo nao habilitado."
+msgstr ""
+
+msgid "Use a acao rapida \"Duplicar\" na listagem de posts/paginas, a acao em massa nativa do WordPress, ou o botao \"Duplicar este conteudo\" no editor classico para criar uma copia."
+msgstr ""
+
+msgid "Ver changelog"
+msgstr ""
+
+msgid "Ver changelog completo no GitHub"
+msgstr ""
+
+msgid "Voce pode usar os campos slug_prefix e slug_suffix para prefixar/sufixar o slug versionado."
+msgstr ""
+
+msgid "Você não tem permissão para acessar esta página."
+msgstr ""
+
+msgid "Você não tem permissão para duplicar este conteúdo."
+msgstr ""
+
+msgid "Você não tem permissão para esta ação."
+msgstr ""
+
+msgid "WordPress 5.8 ou superior (testado ate 6.8). PHP 7.4 ou superior."
+msgstr ""
+

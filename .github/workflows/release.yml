@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -15,26 +17,31 @@ jobs:
       - name: Read plugin version
         id: version
         run: |
-          VERSION=$(grep -E "^ \* Version:" ml-duplicate-posts-pages.php | head -1 | sed -E 's/.*Version: ([0-9.]+).*/\1/')
+          VERSION=$(grep -E "^ \* Version:" ml-duplicate-posts-pages/ml-duplicate-posts-pages.php | head -1 | sed -E 's/.*Version: ([0-9.]+).*/\1/')
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Plugin version detected: $VERSION"
 
       - name: Validate PHP syntax
         run: |
-          for f in $(find . -name "*.php" -not -path "./vendor/*"); do
+          set -e
+          for f in $(find ml-duplicate-posts-pages -name "*.php"); do
+            echo "Linting $f"
             php -l "$f"
           done
 
       - name: Validate JS syntax
         run: |
-          for f in $(find . -name "*.js" -not -path "./node_modules/*"); do
+          set -e
+          for f in $(find ml-duplicate-posts-pages -name "*.js"); do
+            echo "Linting $f"
             node --check "$f"
           done
 
       - name: Build ZIP
         run: |
           SLUG=$(echo "${{ github.repository }}" | awk -F/ '{print $2}')
-          ZIP_NAME="${SLUG}-${{ steps.version.outputs.VERSION }}.zip"
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          ZIP_NAME="${SLUG}-${VERSION}.zip"
           rm -f "$ZIP_NAME"
           cd ..
           zip -r "$GITHUB_WORKSPACE/$ZIP_NAME" "$SLUG" \
@@ -46,7 +53,8 @@ jobs:
         id: sha
         run: |
           SLUG=$(echo "${{ github.repository }}" | awk -F/ '{print $2}')
-          ZIP_NAME="${SLUG}-${{ steps.version.outputs.VERSION }}.zip"
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          ZIP_NAME="${SLUG}-${VERSION}.zip"
           HASH=$(sha256sum "$ZIP_NAME" | awk '{print $1}')
           SIZE=$(stat -c '%s' "$ZIP_NAME")
           echo "SHA256=$HASH" >> $GITHUB_OUTPUT
@@ -59,12 +67,20 @@ jobs:
         with:
           files: ${{ steps.sha.outputs.ZIP }}
           generate_release_notes: false
+          overwrite_files: true
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Print release summary
+        if: always()
         run: |
           echo "### Release summary" >> $GITHUB_STEP_SUMMARY
           echo "- Asset: \`${{ steps.sha.outputs.ZIP }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- SHA-256: \`${{ steps.sha.outputs.SHA256 }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Size: ${{ steps.sha.outputs.SIZE }} bytes" >> $GITHUB_STEP_SUMMARY
+
+      - name: Warn if PAT not configured
+        if: failure()
+        run: |
+          echo "::warning::Release asset upload failed. If the error is 'Resource not accessible by integration', configure a Personal Access Token as repository secret GH_RELEASE_TOKEN with 'contents: write' scope, then update this workflow to use it instead of GITHUB_TOKEN."

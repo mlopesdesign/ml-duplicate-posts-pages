@@ -4,7 +4,7 @@ Tags: duplicate, duplicate post, duplicate page, cpt
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,13 @@ ML Duplicate Posts & Pages permite duplicar conteúdos do WordPress com mais con
 4. Configure os tipos de conteúdo e opções de cópia
 
 == Changelog ==
+
+= 1.2.1 =
+* Corrigido: o CI workflow passa a usar `permissions: contents: write` no job e `overwrite_files: true` para conseguir atualizar releases ja publicadas. Adicionado step de aviso quando o `GITHUB_TOKEN` automatico nao tem permissao suficiente, indicando o uso do secret `GH_RELEASE_TOKEN` com PAT.
+* Adicionado: tres help tabs no painel admin (`Como usar`, `Regras de slug`, `Compatibilidade`) com exemplos praticos de cada modo de versionamento.
+* Adicionado: arquivo `languages/ml-duplicate-posts-pages.pot` com o catalogo completo de strings traduziveis para servir de base a traducoes `.po`/`.mo`.
+* Documentacao: README do repositorio passa a destacar a ultima release, listar os recursos da 1.2.x e documentar as permissoes necessarias para o CI sobrescrever assets.
+* Sincronizado: versao bumpada para 1.2.1 no header do plugin, na constante `MLDPP_VERSION` e na `Stable tag`.
 
 = 1.2.0 =
 * Adicionado: deteccao inteligente do ultimo bloco numerico da slug. Slugs como `pagina-15-historia` agora incrementam o numero interno e viram `pagina-16-historia`. Slugs com multiplos tokens numericos (`foo-2-bar-7-baz`) incrementam apenas o ultimo bloco.
