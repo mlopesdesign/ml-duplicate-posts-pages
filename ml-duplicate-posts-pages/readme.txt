@@ -4,7 +4,7 @@ Tags: duplicate, duplicate post, duplicate page, cpt
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -36,6 +36,10 @@ ML Duplicate Posts & Pages permite duplicar conteúdos do WordPress com mais con
 4. Configure os tipos de conteúdo e opções de cópia
 
 == Changelog ==
+
+= 1.4.1 =
+* Corrigido: o painel do editor de blocos introduzido na 1.4.0 usava `#757575` e `#f0f0f0`, cinzas padrao do WordPress, fora da paleta do plugin. O painel passa a usar exclusivamente os tokens ja definidos (`#114257`, `#0d3647`, `#5b7786`, `#f4f9fb`, `#d7e6ec`), sem introduzir nenhuma cor nova.
+* Corrigido: o botao do painel usava a variante `secondary` padrao do WordPress em vez da classe `.mldpp-editor-button`, que ja existia com a cor da marca para o editor classico. Agora as duas superficies compartilham o mesmo estilo.
 
 = 1.4.0 =
 * Adicionado (critico): painel no editor de blocos (Gutenberg). Ate a 1.3.0 o botao do editor usava apenas `post_submitbox_misc_actions`, hook que nao dispara no editor de blocos — em qualquer site moderno o plugin era invisivel dentro do editor. O novo `assets/js/editor.js` registra um painel em `PluginPostStatusInfo` com o botao de duplicar e a pre-visualizacao do slug. Escrito com `wp.element.createElement` em vez de JSX, sem build step. Compativel com `wp.editor` (WordPress 6.6+) e com o legado `wp.editPost`.

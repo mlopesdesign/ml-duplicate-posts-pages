@@ -174,7 +174,9 @@
     vertical-align: middle;
 }
 
-/* Painel do editor de blocos (Gutenberg) */
+/* Painel do editor de blocos (Gutenberg).
+   Usa exclusivamente os tokens de cor ja definidos acima (#114257, #0d3647,
+   #5b7786, #f4f9fb, #d7e6ec). Nenhuma cor nova e introduzida aqui. */
 .mldpp-editor-panel__inner {
     width: 100%;
 }
@@ -184,27 +186,40 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.4px;
-    color: #757575;
+    color: #114257;
     margin-bottom: 8px;
 }
 
-.mldpp-editor-panel__button {
+.mldpp-editor-panel .mldpp-editor-button {
     width: 100%;
     justify-content: center;
+    background: #114257;
+    border-color: #114257;
+    color: #fff;
+    box-shadow: none;
+}
+
+.mldpp-editor-panel .mldpp-editor-button:hover,
+.mldpp-editor-panel .mldpp-editor-button:focus {
+    background: #0d3647;
+    border-color: #0d3647;
+    color: #fff;
 }
 
 .mldpp-editor-panel__hint {
     margin: 8px 0 0;
     font-size: 12px;
     line-height: 1.5;
-    color: #757575;
+    color: #5b7786;
 }
 
 .mldpp-editor-panel__hint code {
     font-size: 11px;
-    padding: 1px 4px;
-    background: #f0f0f0;
-    border-radius: 2px;
+    padding: 2px 8px;
+    background: #f4f9fb;
+    border: 1px solid #d7e6ec;
+    border-radius: 4px;
+    color: #114257;
     word-break: break-all;
 }
 

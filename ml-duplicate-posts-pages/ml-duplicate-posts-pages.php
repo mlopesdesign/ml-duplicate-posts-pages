@@ -3,7 +3,7 @@
  * Plugin Name: ML Duplicate Posts & Pages
  * Plugin URI: https://mlopesdesign.com.br/
  * Description: Duplica posts, páginas e tipos de conteúdo personalizados com controle do que copiar, ações em massa, logs e painel administrativo no padrão ML.
- * Version: 1.4.0
+ * Version: 1.4.1
  * Author: MLopesDesign
  * Author URI: https://mlopesdesign.com.br/
  * Text Domain: ml-duplicate-posts-pages
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('MLDPP_VERSION', '1.4.0');
+define('MLDPP_VERSION', '1.4.1');
 define('MLDPP_FILE', __FILE__);
 define('MLDPP_DIR', plugin_dir_path(__FILE__));
 define('MLDPP_URL', plugin_dir_url(__FILE__));

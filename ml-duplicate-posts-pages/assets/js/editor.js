@@ -91,10 +91,11 @@
 				Button,
 				{
 					key: 'button',
-					variant: 'secondary',
 					href: settings.duplicateUrl,
 					disabled: isSaving,
-					className: 'mldpp-editor-panel__button'
+					// Reaproveita a classe ja usada pelo botao do editor classico,
+					// para o painel herdar a identidade visual do plugin.
+					className: 'button button-primary mldpp-editor-button'
 				},
 				settings.i18n.buttonLabel
 			)

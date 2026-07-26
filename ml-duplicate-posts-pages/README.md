@@ -6,11 +6,11 @@ administrativo no padrao ML.
 
 ## Ultima release
 
-**v1.4.0** - painel no editor de blocos (Gutenberg), duplicacao de paginas filhas e de
+**v1.4.1** - painel no editor de blocos (Gutenberg), duplicacao de paginas filhas e de
 variacoes de produto WooCommerce com SKU unico, prefixo/sufixo de titulo (antes codigo
 morto) e `_elementor_css` fora da copia.
 
-Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages/releases/tag/v1.4.0
+Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages/releases/tag/v1.4.1
 
 ## Mapa tecnico
 
