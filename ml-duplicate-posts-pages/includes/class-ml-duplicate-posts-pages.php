@@ -6,6 +6,9 @@ if (!defined('ABSPATH')) {
 }
 
 class Plugin {
+    /** Limite de tentativas ao procurar um slug livre (evita loop infinito). */
+    const SLUG_MAX_ATTEMPTS = 1000;
+
     private static $instance = null;
     private $option_name = 'mldpp_settings';
     private $log_option_name = 'mldpp_logs';
@@ -41,10 +44,7 @@ class Plugin {
 
         add_filter('post_row_actions', array($this, 'add_row_action'), 10, 2);
         add_filter('page_row_actions', array($this, 'add_row_action'), 10, 2);
-        add_filter('bulk_actions-edit-post', array($this, 'register_bulk_action_for_post'));
-        add_filter('bulk_actions-edit-page', array($this, 'register_bulk_action_for_page'));
-        add_filter('handle_bulk_actions-edit-post', array($this, 'handle_native_bulk_action_redirect'), 10, 3);
-        add_filter('handle_bulk_actions-edit-page', array($this, 'handle_native_bulk_action_redirect'), 10, 3);
+        add_action('admin_init', array($this, 'register_bulk_actions'), 5);
 
         add_action('admin_bar_menu', array($this, 'add_admin_bar_button'), 90);
         add_action('admin_bar_menu', array($this, 'add_admin_bar_updater_node'), 95);
@@ -90,7 +90,7 @@ class Plugin {
         $screen->add_help_tab(array(
             'id'      => 'mldpp-slug-rules',
             'title'   => __('Regras de slug', 'ml-duplicate-posts-pages'),
-            'content' => '<p>' . esc_html__('O titulo original e preservado. O slug da copia e versionado automaticamente:', 'ml-duplicate-posts-pages') . '</p>'
+            'content' => '<p>' . esc_html__('O titulo original e preservado. A base do versionamento e SEMPRE o slug atual do conteudo que voce escolheu duplicar:', 'ml-duplicate-posts-pages') . '</p>'
                 . '<ul>'
                 . '<li><code>samba-2-guimaraes-215</code> &rarr; <code>samba-2-guimaraes-216</code></li>'
                 . '<li><code>pagina-15-historia</code> &rarr; <code>pagina-16-historia</code></li>'
@@ -98,6 +98,7 @@ class Plugin {
                 . '<li><code>post-007</code> &rarr; <code>post-008</code> (preserva zero a esquerda)</li>'
                 . '<li><code>minha-pagina</code> &rarr; <code>minha-pagina-2</code></li>'
                 . '</ul>'
+                . '<p>' . esc_html__('Duplicar a copia continua a sequencia: pagina-205 gera pagina-206, e duplicar a pagina-206 gera pagina-207. Se voce renomear o slug manualmente, a proxima copia parte do nome novo.', 'ml-duplicate-posts-pages') . '</p>'
                 . '<p>' . esc_html__('Voce pode usar os campos slug_prefix e slug_suffix para prefixar/sufixar o slug versionado.', 'ml-duplicate-posts-pages') . '</p>'
                 . '<p>' . esc_html__('O modo append_suffix usa sempre o sufixo -2, -3... ignorando a deteccao do ultimo numero.', 'ml-duplicate-posts-pages') . '</p>',
         ));
@@ -122,18 +123,21 @@ class Plugin {
 
     public function enqueue_assets($hook) {
         $is_plugin_screen = ($hook === $this->screen_hook);
-        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
 
-        if (!$is_plugin_screen && !$screen) {
+        // Carrega apenas onde o plugin realmente atua: painel proprio, listagens e editor.
+        $allowed_hooks = array('edit.php', 'post.php', 'post-new.php');
+
+        if (!$is_plugin_screen && !in_array($hook, $allowed_hooks, true)) {
             return;
         }
 
-        if (
-            !$is_plugin_screen &&
-            empty($screen->id) &&
-            empty($screen->post_type)
-        ) {
-            return;
+        if (!$is_plugin_screen) {
+            $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+            $post_type = ($screen && !empty($screen->post_type)) ? $screen->post_type : '';
+
+            if ($post_type === '' || !$this->is_post_type_enabled($post_type)) {
+                return;
+            }
         }
 
         wp_enqueue_style(
@@ -304,15 +308,26 @@ class Plugin {
         return $actions;
     }
 
-    public function register_bulk_action_for_post($bulk_actions) {
-        if ($this->is_post_type_enabled('post') && $this->current_user_can_duplicate()) {
-            $bulk_actions['mldpp_bulk_duplicate'] = __('Duplicar', 'ml-duplicate-posts-pages');
+    /**
+     * Registra a acao em massa para TODOS os post types habilitados.
+     * Ate a 1.2.2 apenas 'post' e 'page' eram cobertos, deixando CPTs sem acao em massa.
+     */
+    public function register_bulk_actions() {
+        $settings = $this->get_settings();
+
+        foreach ((array) $settings['enabled_post_types'] as $post_type) {
+            $post_type = sanitize_key($post_type);
+            if ($post_type === '') {
+                continue;
+            }
+
+            add_filter('bulk_actions-edit-' . $post_type, array($this, 'register_bulk_action'));
+            add_filter('handle_bulk_actions-edit-' . $post_type, array($this, 'handle_native_bulk_action_redirect'), 10, 3);
         }
-        return $bulk_actions;
     }
 
-    public function register_bulk_action_for_page($bulk_actions) {
-        if ($this->is_post_type_enabled('page') && $this->current_user_can_duplicate()) {
+    public function register_bulk_action($bulk_actions) {
+        if ($this->current_user_can_duplicate()) {
             $bulk_actions['mldpp_bulk_duplicate'] = __('Duplicar', 'ml-duplicate-posts-pages');
         }
         return $bulk_actions;
@@ -412,13 +427,37 @@ class Plugin {
         exit;
     }
 
-    public function add_admin_bar_button($wp_admin_bar) {
-        if (!is_admin() || !is_singular()) {
-            return;
+    /**
+     * Resolve o conteudo em contexto tanto no front (is_singular) quanto no wp-admin
+     * (post.php / post-new.php). Ate a 1.2.2 o guard exigia is_singular() DENTRO do
+     * wp-admin, condicao sempre falsa, o que deixava o botao permanentemente invisivel.
+     */
+    private function get_contextual_post() {
+        if (is_admin()) {
+            $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+            if (!$screen || $screen->base !== 'post') {
+                return null;
+            }
+
+            $post_id = isset($_GET['post']) ? absint($_GET['post']) : 0;
+            if (!$post_id && isset($GLOBALS['post']) && !empty($GLOBALS['post']->ID)) {
+                $post_id = absint($GLOBALS['post']->ID);
+            }
+
+            return $post_id ? get_post($post_id) : null;
         }
 
-        global $post;
-        if (!$post || !$this->current_user_can_duplicate() || !$this->is_post_type_enabled($post->post_type)) {
+        if (!is_singular()) {
+            return null;
+        }
+
+        return get_queried_object();
+    }
+
+    public function add_admin_bar_button($wp_admin_bar) {
+        $post = $this->get_contextual_post();
+
+        if (!$post instanceof \WP_Post || !$this->current_user_can_duplicate() || !$this->is_post_type_enabled($post->post_type)) {
             return;
         }
 
@@ -444,7 +483,11 @@ class Plugin {
 
     public function render_submitbox_button() {
         global $post;
-        if (!$post || !$this->current_user_can_duplicate() || !$this->is_post_type_enabled($post->post_type)) {
+        if (!$post instanceof \WP_Post || !$this->current_user_can_duplicate() || !$this->is_post_type_enabled($post->post_type)) {
+            return;
+        }
+
+        if (empty($post->ID) || get_post_status($post->ID) === 'auto-draft') {
             return;
         }
 
@@ -639,76 +682,121 @@ class Plugin {
             $base = 'conteudo-' . absint($post->ID);
         }
 
+        $prefix_token = isset($settings['slug_prefix']) ? $this->sanitize_slug_token($settings['slug_prefix']) : '';
+        $suffix_token = isset($settings['slug_suffix']) ? $this->sanitize_slug_token($settings['slug_suffix']) : '';
+
+        // Evita acumulo de tokens ao duplicar uma copia que ja recebeu prefixo/sufixo.
+        $base = $this->strip_slug_tokens($base, $prefix_token, $suffix_token);
+
+        if ($base === '') {
+            $base = 'conteudo-' . absint($post->ID);
+        }
+
         $mode = !empty($settings['numeric_increment_mode']) ? $settings['numeric_increment_mode'] : 'last_numeric';
         $candidate = '';
 
         if ($mode === 'last_numeric') {
-            $candidate = $this->increment_last_numeric_token($base, $post);
+            $candidate = $this->increment_last_numeric_token($base, $post, $prefix_token, $suffix_token);
         }
 
         if ($candidate === '') {
-            $candidate = $this->build_with_progressive_number($base, $post);
-        }
-
-        $prefix_token = isset($settings['slug_prefix']) ? (string) $settings['slug_prefix'] : '';
-        $suffix_token = isset($settings['slug_suffix']) ? (string) $settings['slug_suffix'] : '';
-
-        if ($prefix_token !== '' || $suffix_token !== '') {
-            $candidate = $this->apply_slug_tokens($candidate, $prefix_token, $suffix_token, $post);
+            $candidate = $this->build_with_progressive_number($base, $post, $prefix_token, $suffix_token);
         }
 
         return $candidate;
     }
 
-    private function increment_last_numeric_token($base, $post) {
-        $tokens = explode('-', $base);
-        for ($i = count($tokens) - 1; $i >= 0; $i--) {
-            if ($tokens[$i] !== '' && ctype_digit($tokens[$i])) {
-                $width = strlen($tokens[$i]);
-                $next  = (int) $tokens[$i];
-
-                do {
-                    $next++;
-                    $tokens[$i] = str_pad((string) $next, $width, '0', STR_PAD_LEFT);
-                    $candidate  = implode('-', $tokens);
-                } while ($this->duplicate_slug_exists($candidate, $post));
-
-                return $candidate;
+    /**
+     * Remove prefixo/sufixo configurados do inicio/fim da base, para que o versionamento
+     * atue sobre o nucleo do slug e nao sobre o token fixo.
+     */
+    private function strip_slug_tokens($base, $prefix_token, $suffix_token) {
+        if ($prefix_token !== '') {
+            $needle = sanitize_title($prefix_token) . '-';
+            if ($needle !== '-' && strpos($base, $needle) === 0) {
+                $base = substr($base, strlen($needle));
             }
+        }
+
+        if ($suffix_token !== '') {
+            $needle = '-' . sanitize_title($suffix_token);
+            if ($needle !== '-' && $needle !== '' && substr($base, -strlen($needle)) === $needle) {
+                $base = substr($base, 0, -strlen($needle));
+            }
+        }
+
+        return trim((string) $base, '-');
+    }
+
+    /**
+     * Compoe o slug final aplicando prefixo/sufixo sobre o nucleo ja versionado.
+     */
+    private function compose_slug($core, $prefix_token, $suffix_token) {
+        $parts = array();
+
+        if ($prefix_token !== '') {
+            $parts[] = $prefix_token;
+        }
+
+        $parts[] = $core;
+
+        if ($suffix_token !== '') {
+            $parts[] = $suffix_token;
+        }
+
+        $composed = sanitize_title(implode('-', $parts));
+
+        return ($composed !== '') ? $composed : sanitize_title($core);
+    }
+
+    /**
+     * Incrementa o ultimo bloco numerico do slug preservando o contexto e os zeros a esquerda.
+     * "samba-2-guimaraes-215" -> "samba-2-guimaraes-216"
+     * "post-007"              -> "post-008"
+     * "205"                   -> "206"
+     */
+    private function increment_last_numeric_token($base, $post, $prefix_token = '', $suffix_token = '') {
+        $tokens = explode('-', $base);
+
+        for ($i = count($tokens) - 1; $i >= 0; $i--) {
+            if ($tokens[$i] === '' || !ctype_digit($tokens[$i])) {
+                continue;
+            }
+
+            $width = strlen($tokens[$i]);
+            $next  = (int) $tokens[$i];
+            $guard = 0;
+
+            do {
+                $next++;
+                $guard++;
+                $tokens[$i] = str_pad((string) $next, $width, '0', STR_PAD_LEFT);
+                $candidate  = $this->compose_slug(implode('-', $tokens), $prefix_token, $suffix_token);
+            } while ($this->duplicate_slug_exists($candidate, $post) && $guard < self::SLUG_MAX_ATTEMPTS);
+
+            if ($this->duplicate_slug_exists($candidate, $post)) {
+                return '';
+            }
+
+            return $candidate;
         }
 
         return '';
     }
 
-    private function build_with_progressive_number($base, $post) {
-        $index = 2;
-        $candidate = $base . '-' . $index;
+    private function build_with_progressive_number($base, $post, $prefix_token = '', $suffix_token = '') {
+        $index     = 2;
+        $candidate = $this->compose_slug($base . '-' . $index, $prefix_token, $suffix_token);
+        $guard     = 0;
 
-        while ($this->duplicate_slug_exists($candidate, $post)) {
+        while ($this->duplicate_slug_exists($candidate, $post) && $guard < self::SLUG_MAX_ATTEMPTS) {
             $index++;
-            $candidate = $base . '-' . $index;
+            $guard++;
+            $candidate = $this->compose_slug($base . '-' . $index, $prefix_token, $suffix_token);
         }
 
-        return $candidate;
-    }
-
-    private function apply_slug_tokens($slug, $prefix_token, $suffix_token, $post) {
-        $composed = sanitize_title($prefix_token . $slug . $suffix_token);
-
-        if ($composed === '') {
-            return $slug;
-        }
-
-        if (!$this->duplicate_slug_exists($composed, $post)) {
-            return $composed;
-        }
-
-        $index = 2;
-        $candidate = $composed . '-' . $index;
-
-        while ($this->duplicate_slug_exists($candidate, $post)) {
-            $index++;
-            $candidate = $composed . '-' . $index;
+        if ($this->duplicate_slug_exists($candidate, $post)) {
+            $candidate = $this->compose_slug($base . '-' . $index . '-' . wp_generate_password(6, false, false), $prefix_token, $suffix_token);
         }
 
         return $candidate;
@@ -721,7 +809,21 @@ class Plugin {
         return $cleaned;
     }
 
+    /**
+     * Base de versionamento do slug.
+     *
+     * Regra canonica (v1.3.0): a base e SEMPRE o slug atual do conteudo escolhido.
+     * Escolheu "pagina-205" -> gera "pagina-206". Escolheu a copia "pagina-206" -> gera "pagina-207".
+     *
+     * Ate a 1.2.2 a base vinha do meta _mldpp_slug_base (congelado no post raiz), o que ignorava
+     * o slug realmente selecionado e o slug editado manualmente. O meta agora e apenas fallback
+     * de auditoria para conteudos sem post_name (rascunhos nunca salvos).
+     */
     private function get_duplicate_slug_base($post) {
+        if (!empty($post->post_name)) {
+            return sanitize_title($post->post_name);
+        }
+
         $stored_base = get_post_meta($post->ID, '_mldpp_slug_base', true);
         if (!empty($stored_base)) {
             return sanitize_title($stored_base);
@@ -739,10 +841,6 @@ class Plugin {
                     return sanitize_title($source_post->post_title);
                 }
             }
-        }
-
-        if (!empty($post->post_name)) {
-            return sanitize_title($post->post_name);
         }
 
         if (!empty($post->post_title)) {
@@ -767,7 +865,7 @@ class Plugin {
             $params[] = absint($post->post_parent);
         }
 
-        $sql = "SELECT ID FROM {$wpdb->posts} WHERE post_name = %s AND post_type = %s AND ID <> %d AND post_status <> 'trash'" . $where_parent . ' LIMIT 1';
+        $sql = "SELECT ID FROM {$wpdb->posts} WHERE post_name = %s AND post_type = %s AND ID <> %d AND post_status NOT IN ('trash', 'auto-draft')" . $where_parent . ' LIMIT 1';
 
         return (bool) $wpdb->get_var($wpdb->prepare($sql, $params));
     }
@@ -870,7 +968,9 @@ class Plugin {
                 }
 
                 foreach ((array) $values as $value) {
-                    add_post_meta($new_post_id, $meta_key, maybe_unserialize($value));
+                    // wp_slash e obrigatorio: add_post_meta faz unslash internamente e,
+                    // sem isso, barras invertidas legitimas do valor original sao perdidas.
+                    add_post_meta($new_post_id, $meta_key, wp_slash(maybe_unserialize($value)));
                 }
             }
         }

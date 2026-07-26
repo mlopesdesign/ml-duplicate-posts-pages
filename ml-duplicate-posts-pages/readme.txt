@@ -4,7 +4,7 @@ Tags: duplicate, duplicate post, duplicate page, cpt
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.2.2
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,19 @@ ML Duplicate Posts & Pages permite duplicar conteúdos do WordPress com mais con
 4. Configure os tipos de conteúdo e opções de cópia
 
 == Changelog ==
+
+= 1.3.0 =
+* Corrigido (critico): o versionamento do slug passa a usar SEMPRE o slug atual do conteudo escolhido como base. Ate a 1.2.2 a base vinha do meta `_mldpp_slug_base`, congelado no post raiz, o que ignorava o item realmente selecionado e qualquer slug editado manualmente. Escolheu `pagina-205` -> gera `pagina-206`. Escolheu a copia `pagina-206` -> gera `pagina-207`.
+* Corrigido (critico): o botao "Duplicar conteudo" da admin bar nunca aparecia. O guard exigia `is_singular()` dentro do `wp-admin`, condicao sempre falsa. Novo helper `get_contextual_post()` resolve o conteudo tanto no front (`is_singular`) quanto no editor (`post.php` / `post-new.php`).
+* Corrigido: a acao em massa "Duplicar" so era registrada para `post` e `page`. Agora e registrada dinamicamente para todos os post types habilitados nas configuracoes, incluindo CPTs.
+* Corrigido: prefixo/sufixo de slug se acumulavam ao duplicar uma copia (`copy-of-copy-of-pagina-207`). Novo `strip_slug_tokens()` remove o token existente antes de reaplicar, e `compose_slug()` centraliza a montagem.
+* Corrigido: os metadados copiados passam por `wp_slash()` antes de `add_post_meta()`, evitando a perda de barras invertidas legitimas em valores serializados e em JSON armazenado em meta.
+* Corrigido: a checagem de colisao de slug passa a ignorar tambem posts com status `auto-draft`, que antes bloqueavam numeros validos.
+* Adicionado: guarda de 1000 tentativas nos loops de busca de slug livre, com fallback por sufixo aleatorio, eliminando o risco de loop infinito.
+* Melhorado: assets de CSS/JS carregam apenas no painel do plugin, nas listagens e no editor de post types habilitados, em vez de em toda tela do wp-admin.
+* Melhorado: o updater registra o plugin em `no_update` quando ja esta atualizado, para que o WordPress exiba o estado correto e habilite o toggle de atualizacao automatica.
+* Melhorado: o CI valida que header, `MLDPP_VERSION`, `Stable tag` e a tag do git apontam para a mesma versao antes de publicar, e valida a estrutura do ZIP por entrada exata em vez de `grep` solto.
+* Documentacao: adicionado `GRAPHIFY.md` com o mapa tecnico completo do plugin (arquivos, hooks, fluxo de duplicacao, regras de slug e pipeline de release) e o script `tools/graphify.js` que o regenera.
 
 = 1.2.2 =
 * Adicionado: botao "ML Duplicate" na admin bar do WordPress (topo) com sub-itens "Verificar atualizacao agora" e "Diagnostico do updater". Visivel para usuarios com capability `update_plugins`.

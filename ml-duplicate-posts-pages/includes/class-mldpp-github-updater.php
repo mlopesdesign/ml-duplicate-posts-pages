@@ -30,19 +30,53 @@ class GitHub_Updater {
             return $transient;
         }
 
+        // Sem update disponivel: registra em no_update para que o WordPress exiba
+        // corretamente o estado do plugin e habilite o toggle de atualizacao automatica.
         if (version_compare($release['version'], MLDPP_VERSION, '<=')) {
+            if (!isset($transient->no_update) || !is_array($transient->no_update)) {
+                $transient->no_update = array();
+            }
+
+            $transient->no_update[MLDPP_BASENAME] = (object) array(
+                'id'            => MLDPP_BASENAME,
+                'slug'          => dirname(MLDPP_BASENAME),
+                'plugin'        => MLDPP_BASENAME,
+                'new_version'   => MLDPP_VERSION,
+                'url'           => MLDPP_GITHUB_REPO_URL,
+                'package'       => $release['package'],
+                'icons'         => array(),
+                'banners'       => array(),
+                'banners_rtl'   => array(),
+                'tested'        => !empty($release['tested']) ? $release['tested'] : '',
+                'requires_php'  => '7.4',
+                'compatibility' => new \stdClass(),
+            );
+
+            unset($transient->response[MLDPP_BASENAME]);
+
             return $transient;
         }
 
+        if (!isset($transient->response) || !is_array($transient->response)) {
+            $transient->response = array();
+        }
+
         $transient->response[MLDPP_BASENAME] = (object) array(
-            'id'          => MLDPP_BASENAME,
-            'slug'        => dirname(MLDPP_BASENAME),
-            'plugin'      => MLDPP_BASENAME,
-            'new_version' => $release['version'],
-            'url'         => MLDPP_GITHUB_REPO_URL,
-            'package'     => $release['package'],
-            'tested'      => !empty($release['tested']) ? $release['tested'] : '',
+            'id'            => MLDPP_BASENAME,
+            'slug'          => dirname(MLDPP_BASENAME),
+            'plugin'        => MLDPP_BASENAME,
+            'new_version'   => $release['version'],
+            'url'           => MLDPP_GITHUB_REPO_URL,
+            'package'       => $release['package'],
+            'icons'         => array(),
+            'banners'       => array(),
+            'banners_rtl'   => array(),
+            'tested'        => !empty($release['tested']) ? $release['tested'] : '',
+            'requires_php'  => '7.4',
+            'compatibility' => new \stdClass(),
         );
+
+        unset($transient->no_update[MLDPP_BASENAME]);
 
         return $transient;
     }

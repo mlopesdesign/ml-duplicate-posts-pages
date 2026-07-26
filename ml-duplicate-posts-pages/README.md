@@ -6,11 +6,28 @@ administrativo no padrao ML.
 
 ## Ultima release
 
-**v1.2.1** - patch com correcao do CI workflow, help tabs no painel, arquivo de traducao `.pot` e README atualizado.
+**v1.3.0** - correcao critica do versionamento de slug (a base passa a ser o slug do
+conteudo escolhido), botao da admin bar reativado, acao em massa para todos os CPTs
+habilitados, prefixo/sufixo sem acumulo, `wp_slash` nos metadados copiados e CI com
+validacao de versao e de estrutura do ZIP.
 
-Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages/releases/tag/v1.2.1
+Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages/releases/tag/v1.3.0
 
-## Recursos (v1.2.x)
+## Mapa tecnico
+
+O arquivo [GRAPHIFY.md](../GRAPHIFY.md) na raiz do repositorio contem o mapa tecnico
+completo e gerado automaticamente: estrutura de arquivos, grafo de carregamento, todos
+os hooks, fluxo de duplicacao, regras de slug, dados persistidos, superficie de
+seguranca, ciclo do updater e pipeline de release.
+
+Regere apos qualquer alteracao no plugin:
+
+```bash
+node tools/graphify.js          # regera o GRAPHIFY.md
+node tools/graphify.js --check  # falha se estiver desatualizado (rodado no CI)
+```
+
+## Recursos (v1.3.x)
 
 - Duplicacao de posts, paginas e custom post types
 - Acao rapida "Duplicar" na listagem

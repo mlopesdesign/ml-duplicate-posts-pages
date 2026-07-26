@@ -7,9 +7,12 @@ on:
   workflow_dispatch:
     inputs:
       skip_publish:
-        description: 'Skip publishing release (validation only)'
+        description: 'Validation only (no release published)'
         required: false
-        default: 'false'
+        default: 'true'
+
+env:
+  PLUGIN_SLUG: ml-duplicate-posts-pages
 
 jobs:
   build:
@@ -20,121 +23,178 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Read plugin version
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          tools: none
+          coverage: none
+
+      - name: Read and validate plugin version
         id: version
         run: |
-          VERSION=$(grep -E "^ \* Version:" ml-duplicate-posts-pages/ml-duplicate-posts-pages.php | head -1 | sed -E 's/.*Version: ([0-9.]+).*/\1/')
-          if [ -z "$VERSION" ]; then
-            echo "::error::Could not read plugin version from header"
+          set -euo pipefail
+          MAIN_FILE="${PLUGIN_SLUG}/${PLUGIN_SLUG}.php"
+
+          if [ ! -f "$MAIN_FILE" ]; then
+            echo "::error::Main plugin file '$MAIN_FILE' not found. The plugin slug must never change."
             exit 1
           fi
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Plugin version detected: $VERSION"
+
+          VERSION=$(grep -E "^ \* Version:" "$MAIN_FILE" | head -1 | sed -E 's/.*Version:[[:space:]]*([0-9][0-9.]*).*/\1/')
+          CONST_VERSION=$(grep -E "define\('MLDPP_VERSION'" "$MAIN_FILE" | head -1 | sed -E "s/.*'([0-9][0-9.]*)'.*/\1/")
+          STABLE_TAG=$(grep -E "^Stable tag:" "${PLUGIN_SLUG}/readme.txt" | head -1 | sed -E 's/.*Stable tag:[[:space:]]*([0-9][0-9.]*).*/\1/')
+
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not read plugin version from header."
+            exit 1
+          fi
+
+          if [ "$VERSION" != "$CONST_VERSION" ]; then
+            echo "::error::Header version ($VERSION) != MLDPP_VERSION ($CONST_VERSION). The updater would compare the wrong number."
+            exit 1
+          fi
+
+          if [ "$VERSION" != "$STABLE_TAG" ]; then
+            echo "::error::Header version ($VERSION) != readme.txt Stable tag ($STABLE_TAG)."
+            exit 1
+          fi
+
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            TAG_VERSION="${GITHUB_REF_NAME#v}"
+            if [ "$VERSION" != "$TAG_VERSION" ]; then
+              echo "::error::Tag ${GITHUB_REF_NAME} does not match plugin version $VERSION. The WordPress update would break."
+              exit 1
+            fi
+          fi
+
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Plugin version validated: $VERSION"
 
       - name: Validate PHP syntax
         run: |
-          set -e
-          for f in $(find ml-duplicate-posts-pages -name "*.php"); do
+          set -euo pipefail
+          find "$PLUGIN_SLUG" -name "*.php" -print0 | while IFS= read -r -d '' f; do
             echo "Linting $f"
             php -l "$f"
           done
 
       - name: Validate JS syntax
         run: |
-          set -e
-          for f in $(find ml-duplicate-posts-pages -name "*.js"); do
+          set -euo pipefail
+          find "$PLUGIN_SLUG" -name "*.js" -print0 | while IFS= read -r -d '' f; do
             echo "Linting $f"
             node --check "$f"
           done
 
+      - name: Validate GRAPHIFY.md is up to date
+        run: node tools/graphify.js --check
+
       - name: Build ZIP
+        id: build
         run: |
-          set -e
-          SLUG=$(echo "${{ github.repository }}" | awk -F/ '{print $2}')
+          set -euo pipefail
           VERSION="${{ steps.version.outputs.VERSION }}"
-          ZIP_NAME="${SLUG}-${VERSION}.zip"
+          ZIP_NAME="${PLUGIN_SLUG}-${VERSION}.zip"
+
           rm -f "$ZIP_NAME"
-          zip -r "$ZIP_NAME" "$SLUG/" \
-            -x "*.git*" "*.DS_Store" "node_modules/*" "vendor/*" \
-            -x "${SLUG}/.git*" "${SLUG}/.github/*"
+          zip -rq "$ZIP_NAME" "${PLUGIN_SLUG}/" \
+            -x "${PLUGIN_SLUG}/.git*" \
+            -x "${PLUGIN_SLUG}/.github/*" \
+            -x "*/.DS_Store" \
+            -x "*/node_modules/*" \
+            -x "*/vendor/*"
+
+          echo "ZIP=$ZIP_NAME" >> "$GITHUB_OUTPUT"
           ls -la "$ZIP_NAME"
 
       - name: Validate ZIP structure
         run: |
-          set -e
-          SLUG=$(echo "${{ github.repository }}" | awk -F/ '{print $2}')
-          VERSION="${{ steps.version.outputs.VERSION }}"
-          ZIP_NAME="${SLUG}-${VERSION}.zip"
+          set -euo pipefail
+          ZIP_NAME="${{ steps.build.outputs.ZIP }}"
 
           echo "=== ZIP structure (top 30 entries) ==="
           unzip -l "$ZIP_NAME" | head -30
 
-          # Check 1: first entry must be the slug folder
-          FIRST_ENTRY=$(unzip -l "$ZIP_NAME" | awk 'NR==4 {print $4}')
-          echo "First entry in ZIP: '$FIRST_ENTRY'"
-          if [ "$FIRST_ENTRY" != "${SLUG}/" ]; then
-            echo "::error::First entry must be '${SLUG}/' but is '$FIRST_ENTRY'. ZIP has wrong root folder."
+          ENTRIES=$(unzip -Z1 "$ZIP_NAME")
+
+          # 1. Single root: every entry must live under the plugin slug folder.
+          if echo "$ENTRIES" | grep -qv "^${PLUGIN_SLUG}/"; then
+            echo "::error::ZIP has entries outside '${PLUGIN_SLUG}/'. Wrong root folder."
+            echo "$ENTRIES" | grep -v "^${PLUGIN_SLUG}/" | head -5
             exit 1
           fi
 
-          # Check 2: must NOT have double folder (e.g. slug/slug/)
-          if unzip -l "$ZIP_NAME" | grep -q "${SLUG}/${SLUG}/"; then
-            echo "::error::ZIP contains double folder '${SLUG}/${SLUG}/'. This breaks WordPress plugin upload."
-            unzip -l "$ZIP_NAME" | grep "${SLUG}/${SLUG}/" | head -5
+          # 2. No nested duplicate folder (slug/slug/) - breaks the WordPress upload.
+          if echo "$ENTRIES" | grep -q "^${PLUGIN_SLUG}/${PLUGIN_SLUG}/"; then
+            echo "::error::ZIP contains double folder '${PLUGIN_SLUG}/${PLUGIN_SLUG}/'."
             exit 1
           fi
 
-          # Check 3: main plugin file must exist
-          MAIN_FILE=$(grep -E "^ \* Plugin Name:" ml-duplicate-posts-pages/${SLUG}.php 2>/dev/null && echo "ok")
-          if ! unzip -l "$ZIP_NAME" | grep -q "${SLUG}/${SLUG}.php"; then
-            echo "::error::Main plugin file '${SLUG}/${SLUG}.php' not found in ZIP."
+          # 3. Main plugin file present at the exact expected path.
+          if ! echo "$ENTRIES" | grep -qx "${PLUGIN_SLUG}/${PLUGIN_SLUG}.php"; then
+            echo "::error::Main plugin file '${PLUGIN_SLUG}/${PLUGIN_SLUG}.php' not found in ZIP."
             exit 1
           fi
 
-          # Check 4: must NOT contain forbidden artifacts
-          for forbidden in __MACOSX .DS_Store .git/ node_modules/ vendor/; do
-            if unzip -l "$ZIP_NAME" | grep -q "$forbidden"; then
-              echo "::error::ZIP contains forbidden path '$forbidden'."
-              unzip -l "$ZIP_NAME" | grep "$forbidden" | head -3
+          # 4. Required companion files.
+          for required in "${PLUGIN_SLUG}/readme.txt" "${PLUGIN_SLUG}/uninstall.php"; do
+            if ! echo "$ENTRIES" | grep -qx "$required"; then
+              echo "::error::Required file '$required' missing from ZIP."
               exit 1
             fi
           done
+
+          # 5. No development artifacts.
+          if echo "$ENTRIES" | grep -Eq '(^|/)(__MACOSX|\.DS_Store|\.git|node_modules|vendor)(/|$)'; then
+            echo "::error::ZIP contains forbidden development artifacts."
+            echo "$ENTRIES" | grep -E '(^|/)(__MACOSX|\.DS_Store|\.git|node_modules|vendor)(/|$)' | head -5
+            exit 1
+          fi
 
           echo "All ZIP structure checks passed."
 
       - name: Compute SHA-256
         id: sha
         run: |
-          SLUG=$(echo "${{ github.repository }}" | awk -F/ '{print $2}')
-          VERSION="${{ steps.version.outputs.VERSION }}"
-          ZIP_NAME="${SLUG}-${VERSION}.zip"
+          set -euo pipefail
+          ZIP_NAME="${{ steps.build.outputs.ZIP }}"
           HASH=$(sha256sum "$ZIP_NAME" | awk '{print $1}')
           SIZE=$(stat -c '%s' "$ZIP_NAME")
-          echo "SHA256=$HASH" >> $GITHUB_OUTPUT
-          echo "SIZE=$SIZE" >> $GITHUB_OUTPUT
-          echo "ZIP=$ZIP_NAME" >> $GITHUB_OUTPUT
+          echo "SHA256=$HASH" >> "$GITHUB_OUTPUT"
+          echo "SIZE=$SIZE" >> "$GITHUB_OUTPUT"
           echo "Asset: $ZIP_NAME | SHA-256: $HASH | Size: $SIZE bytes"
 
       - name: Upload release asset
-        if: github.event_name == 'push' && (github.event.head_commit.message != 'skip-release' || github.event_name == 'push')
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.sha.outputs.ZIP }}
-          generate_release_notes: false
-          overwrite_files: true
+          files: ${{ steps.build.outputs.ZIP }}
+          generate_release_notes: true
           fail_on_unmatched_files: true
+
+      - name: Upload build artifact (dry run)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.ZIP }}
+          path: ${{ steps.build.outputs.ZIP }}
 
       - name: Print release summary
         if: always()
         run: |
-          echo "### Release summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Asset: \`${{ steps.sha.outputs.ZIP }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- SHA-256: \`${{ steps.sha.outputs.SHA256 }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Size: ${{ steps.sha.outputs.SIZE }} bytes" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### Release summary"
+            echo "- Plugin slug: \`${PLUGIN_SLUG}\` (immutable)"
+            echo "- Version: \`${{ steps.version.outputs.VERSION }}\`"
+            echo "- Asset: \`${{ steps.build.outputs.ZIP }}\`"
+            echo "- SHA-256: \`${{ steps.sha.outputs.SHA256 }}\`"
+            echo "- Size: ${{ steps.sha.outputs.SIZE }} bytes"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Warn if PAT not configured
+      - name: Warn if token lacks permission
         if: failure()
         run: |
-          echo "::warning::Release asset upload failed. If the error is 'Resource not accessible by integration', configure a Personal Access Token as repository secret GH_RELEASE_TOKEN with 'contents: write' scope, then update this workflow to use it instead of GITHUB_TOKEN."
+          echo "::warning::If the failure is 'Resource not accessible by integration', create a PAT with 'contents: write' as secret GH_RELEASE_TOKEN and use it in the release step."
