@@ -1335,28 +1335,88 @@ class Plugin {
         $post_types = $this->get_available_post_types();
         $logs = $this->get_logs();
 
+        $force_check_url = wp_nonce_url(admin_url('admin.php?action=mldpp_force_check'), 'mldpp_force_check');
+        $is_debug        = !empty($_GET['mldpp_debug']);
+        $current_tab     = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'dashboard';
+        $base_url        = admin_url('admin.php?page=mldpp-dashboard');
+
+        $tabs = array(
+            'dashboard'     => __('Dashboard', 'ml-duplicate-posts-pages'),
+            'configuracoes' => __('Configurações', 'ml-duplicate-posts-pages'),
+            'lote'          => __('Duplicação em lote', 'ml-duplicate-posts-pages'),
+            'logs'          => __('Logs', 'ml-duplicate-posts-pages'),
+        );
+
+        if (!array_key_exists($current_tab, $tabs)) {
+            $current_tab = 'dashboard';
+        }
+
+        $total_logs = count($logs);
+        $enabled_types = count((array) $settings['enabled_post_types']);
+
         ?>
         <div class="wrap mldpp-admin-wrap">
             <div class="mldpp-hero">
                 <div class="mldpp-hero__left">
                     <span class="mldpp-badge">ML Lopes Design</span>
-                    <h1>ML Duplicate Posts &amp; Pages <span>v<?php echo esc_html(MLDPP_VERSION); ?></span></h1>
+                    <div class="mldpp-eyebrow"><?php esc_html_e('Painel profissional', 'ml-duplicate-posts-pages'); ?></div>
+                    <h1>ML Duplicate Posts &amp; Pages <span class="mldpp-version">v<?php echo esc_html(MLDPP_VERSION); ?></span></h1>
                     <p>Duplicação profissional de conteúdos do WordPress com controle do que copiar, compatibilidade com posts, páginas e CPTs, ação em massa e registro de atividades.</p>
                 </div>
                 <div class="mldpp-hero__right">
-                    <?php
-                    $force_check_url = wp_nonce_url(admin_url('admin.php?action=mldpp_force_check'), 'mldpp_force_check');
-                    $debug_url       = add_query_arg('mldpp_debug', '1');
-                    $is_debug        = !empty($_GET['mldpp_debug']);
-                    ?>
-                    <a class="button button-secondary button-hero mldpp-force-check" href="<?php echo esc_url($force_check_url); ?>" style="margin-right:8px;">
+                    <a class="button button-secondary mldpp-force-check" href="<?php echo esc_url($force_check_url); ?>">
                         <span class="dashicons dashicons-update" aria-hidden="true"></span>
                         <?php esc_html_e('Verificar atualizacao', 'ml-duplicate-posts-pages'); ?>
                     </a>
-                    <a class="button button-primary button-hero" href="<?php echo esc_url(admin_url('edit.php')); ?>">Abrir listagem de conteúdos</a>
+                    <a class="button button-primary" href="<?php echo esc_url(admin_url('edit.php')); ?>"><?php esc_html_e('Abrir listagem de conteúdos', 'ml-duplicate-posts-pages'); ?></a>
                 </div>
             </div>
 
+            <nav class="mldpp-tabs">
+                <?php foreach ($tabs as $tab_key => $tab_label) : ?>
+                    <a class="mldpp-tab<?php echo ($current_tab === $tab_key) ? ' is-active' : ''; ?>"
+                       href="<?php echo esc_url(add_query_arg('tab', $tab_key, $base_url)); ?>"><?php echo esc_html($tab_label); ?></a>
+                <?php endforeach; ?>
+            </nav>
+
+            <?php if ($current_tab === 'dashboard') : ?>
+            <div class="mldpp-grid">
+                <div class="mldpp-card">
+                    <h2><?php esc_html_e('Resumo operacional', 'ml-duplicate-posts-pages'); ?></h2>
+                    <div class="mldpp-kpi-grid">
+                        <div class="mldpp-kpi">
+                            <strong><?php echo esc_html($enabled_types); ?></strong>
+                            <span><?php esc_html_e('Tipos habilitados', 'ml-duplicate-posts-pages'); ?></span>
+                        </div>
+                        <div class="mldpp-kpi">
+                            <strong><?php echo esc_html($total_logs); ?></strong>
+                            <span><?php esc_html_e('Duplicações registradas', 'ml-duplicate-posts-pages'); ?></span>
+                        </div>
+                    </div>
+                    <div class="mldpp-note"><?php esc_html_e('O slug da cópia é versionado a partir do slug do conteúdo escolhido. O título é preservado, salvo se você definir prefixo ou sufixo.', 'ml-duplicate-posts-pages'); ?></div>
+                </div>
+
+                <div class="mldpp-card">
+                    <h2><?php esc_html_e('Fluxo recomendado', 'ml-duplicate-posts-pages'); ?></h2>
+                    <ol class="mldpp-list">
+                        <li><?php esc_html_e('Habilite os tipos de conteúdo em Configurações.', 'ml-duplicate-posts-pages'); ?></li>
+                        <li><?php esc_html_e('Defina o que deve ser copiado na duplicação.', 'ml-duplicate-posts-pages'); ?></li>
+                        <li><?php esc_html_e('Use a ação rápida "Duplicar" na listagem do WordPress.', 'ml-duplicate-posts-pages'); ?></li>
+                        <li><?php esc_html_e('No editor, use o painel ML Duplicate na barra lateral.', 'ml-duplicate-posts-pages'); ?></li>
+                        <li><?php esc_html_e('Audite quem duplicou e quando na aba Logs.', 'ml-duplicate-posts-pages'); ?></li>
+                    </ol>
+                </div>
+
+                <div class="mldpp-card">
+                    <h2><?php esc_html_e('Atalhos rápidos', 'ml-duplicate-posts-pages'); ?></h2>
+                    <p><a class="button button-primary" href="<?php echo esc_url(add_query_arg('tab', 'configuracoes', $base_url)); ?>"><?php esc_html_e('Abrir configurações', 'ml-duplicate-posts-pages'); ?></a></p>
+                    <p><a class="button button-secondary" href="<?php echo esc_url(add_query_arg('tab', 'lote', $base_url)); ?>"><?php esc_html_e('Duplicar em lote', 'ml-duplicate-posts-pages'); ?></a></p>
+                    <p><a class="button button-secondary" href="<?php echo esc_url(add_query_arg('tab', 'logs', $base_url)); ?>"><?php esc_html_e('Ver logs', 'ml-duplicate-posts-pages'); ?></a></p>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($current_tab === 'configuracoes') : ?>
             <div class="mldpp-grid">
                 <div class="mldpp-card">
                     <h2>Configurações gerais</h2>
@@ -1483,7 +1543,11 @@ class Plugin {
                         <?php submit_button('Salvar configurações'); ?>
                     </form>
                 </div>
+            </div>
+            <?php endif; ?>
 
+            <?php if ($current_tab === 'lote') : ?>
+            <div class="mldpp-grid">
                 <div class="mldpp-card">
                     <h2>Duplicação em lote</h2>
                     <form method="post">
@@ -1541,7 +1605,9 @@ class Plugin {
                     </form>
                 </div>
             </div>
+            <?php endif; ?>
 
+            <?php if ($current_tab === 'logs') : ?>
             <div class="mldpp-grid mldpp-grid--bottom">
                 <div class="mldpp-card">
                     <h2>Como usar</h2>
@@ -1592,6 +1658,7 @@ class Plugin {
                     <?php endif; ?>
                 </div>
             </div>
+            <?php endif; ?>
 
             <?php if (!empty($_GET['mldpp_debug'])) : ?>
                 <?php

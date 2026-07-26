@@ -2,7 +2,7 @@
 # This file is distributed under the GPLv2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: ML Duplicate Posts & Pages 1.4.1\n"
+"Project-Id-Version: ML Duplicate Posts & Pages 1.5.0\n"
 "Report-Msgid-Bugs-To: https://github.com/mlopesdesign/ml-duplicate-posts-pages/issues\n"
 "POT-Creation-Date: 2026-07-10 06:21:25\n"
 "MIME-Version: 1.0\n"

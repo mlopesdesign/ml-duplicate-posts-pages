@@ -4,7 +4,7 @@ Tags: duplicate, duplicate post, duplicate page, cpt
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.4.1
+Stable tag: 1.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -36,6 +36,14 @@ ML Duplicate Posts & Pages permite duplicar conteúdos do WordPress com mais con
 4. Configure os tipos de conteúdo e opções de cópia
 
 == Changelog ==
+
+= 1.5.0 =
+* Alterado (identidade visual): o painel administrativo passa a seguir o sistema de design ML Lopes Design usado nos demais plugins da linha. Header em card branco com acento de 6px a esquerda no accent, raio 20px; navegacao em abas tipo pilula com a ativa preenchida no accent; cards em grid `auto-fit minmax(280px, 1fr)` com raio 16px; eyebrow em caixa alta com `letter-spacing: .12em`; pilula de versao ao lado do titulo.
+* Alterado: os tokens de cor migraram para os mesmos do restante da linha: `--mldpp-accent: #155e6f`, `--mldpp-accent-soft: #d9eef2`, `--mldpp-border: #c9d8dc`, `--mldpp-text: #0f2b33`, `--mldpp-muted: #55727a`. O plugin usava `#114257` / `#0d3647`, tons proprios que nao batiam com os demais plugins.
+* Corrigido: o azul padrao do WordPress vazava nos botoes. O CSS so sobrescrevia `.button-primary` quando combinado com `.button-hero`, entao botoes como "Executar duplicacao em lote" eram pintados com o azul do WordPress. Agora `.button-primary` e `.button-secondary` sao sobrescritos dentro de `.mldpp-admin-wrap`. Nenhum azul em nenhuma superficie do plugin.
+* Adicionado: navegacao em quatro abas — Dashboard, Configuracoes, Duplicacao em lote e Logs — no lugar da pagina unica com tudo empilhado.
+* Adicionado: aba Dashboard com indicadores de tipos habilitados e duplicacoes registradas, fluxo recomendado e atalhos.
+* Melhorado: o painel do editor de blocos passa a usar os mesmos tokens, ficando coerente com o restante da linha.
 
 = 1.4.1 =
 * Corrigido: o painel do editor de blocos introduzido na 1.4.0 usava `#757575` e `#f0f0f0`, cinzas padrao do WordPress, fora da paleta do plugin. O painel passa a usar exclusivamente os tokens ja definidos (`#114257`, `#0d3647`, `#5b7786`, `#f4f9fb`, `#d7e6ec`), sem introduzir nenhuma cor nova.

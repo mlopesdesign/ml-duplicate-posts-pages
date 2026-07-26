@@ -4,7 +4,7 @@
 > **Nao edite a mao.** Regere apos qualquer alteracao no plugin e antes do commit.
 
 - **Slug (imutavel):** `ml-duplicate-posts-pages`
-- **Versao:** `1.4.1` (readme Stable tag: `1.4.1`)
+- **Versao:** `1.5.0` (readme Stable tag: `1.5.0`)
 - **Text domain:** `ml-duplicate-posts-pages`
 - **Requisitos:** WordPress 5.8+ (testado ate 6.8), PHP 7.4+
 - **Gerado em:** 2026-07-26
@@ -35,7 +35,7 @@ ml-duplicate-posts-pages/
 
 | Arquivo | Linhas | Classes | Metodos | Hooks |
 | --- | --- | --- | --- | --- |
-| `ml-duplicate-posts-pages/includes/class-ml-duplicate-posts-pages.php` | 1730 | `Plugin` | 46 | 20 |
+| `ml-duplicate-posts-pages/includes/class-ml-duplicate-posts-pages.php` | 1797 | `Plugin` | 46 | 20 |
 | `ml-duplicate-posts-pages/includes/class-mldpp-github-updater.php` | 227 | `GitHub_Updater` | 8 | 4 |
 | `ml-duplicate-posts-pages/ml-duplicate-posts-pages.php` | 37 | - | - | - |
 | `ml-duplicate-posts-pages/uninstall.php` | 18 | - | - | - |
@@ -57,7 +57,7 @@ WordPress carrega ml-duplicate-posts-pages/ml-duplicate-posts-pages.php
 
 | Constante | Valor |
 | --- | --- |
-| `MLDPP_VERSION` | `'1.4.1'` |
+| `MLDPP_VERSION` | `'1.5.0'` |
 | `MLDPP_FILE` | `__FILE__` |
 | `MLDPP_DIR` | `plugin_dir_path(__FILE__)` |
 | `MLDPP_URL` | `plugin_dir_url(__FILE__)` |

@@ -1,171 +1,239 @@
+/**
+ * ML Duplicate Posts & Pages - painel administrativo.
+ *
+ * IDENTIDADE VISUAL ML LOPES DESIGN.
+ * Os tokens abaixo sao os mesmos do ML Banner Pro e valem para todos os plugins
+ * da linha. Nao introduza cor, raio ou sombra fora desta lista.
+ *
+ * Nenhum azul. O `.button-primary` padrao do WordPress e sobrescrito
+ * explicitamente porque, sem isso, ele pinta os botoes com o azul do WordPress.
+ */
+
+:root {
+    --mldpp-accent: #155e6f;
+    --mldpp-accent-soft: #d9eef2;
+    --mldpp-border: #c9d8dc;
+    --mldpp-text: #0f2b33;
+    --mldpp-muted: #55727a;
+    --mldpp-surface: #fff;
+    --mldpp-surface-soft: #f6fafb;
+    --mldpp-radius-shell: 20px;
+    --mldpp-radius-card: 16px;
+    --mldpp-radius-control: 14px;
+    --mldpp-radius-pill: 999px;
+    --mldpp-shadow-shell: 0 8px 24px rgba(15, 102, 116, .06);
+    --mldpp-shadow-card: 0 8px 24px rgba(15, 102, 116, .04);
+}
 
 .mldpp-admin-wrap {
-    margin-top: 20px;
+    max-width: 1400px;
+    margin-top: 18px;
+    color: var(--mldpp-text);
 }
+
+/* ---------------------------------------------------------------- Header */
 
 .mldpp-hero {
-    background: linear-gradient(135deg, #ffffff 0%, #f4f9fb 100%);
-    border: 1px solid #d7e6ec;
-    border-radius: 18px;
-    padding: 28px;
     display: flex;
-    gap: 24px;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    box-shadow: 0 10px 30px rgba(17, 66, 87, 0.06);
-    margin-bottom: 22px;
+    gap: 24px;
+    margin: 0 0 20px;
+    background: var(--mldpp-surface);
+    border: 1px solid var(--mldpp-border);
+    border-left: 6px solid var(--mldpp-accent);
+    border-radius: var(--mldpp-radius-shell);
+    padding: 28px 30px;
+    box-shadow: var(--mldpp-shadow-shell);
 }
 
-.mldpp-hero__left h1 {
-    margin: 8px 0 10px;
-    font-size: 28px;
-    line-height: 1.2;
-    color: #114257;
+.mldpp-hero__left {
+    flex: 1;
+    min-width: 0;
 }
 
-.mldpp-hero__left h1 span {
-    font-size: 16px;
-    color: #5b7786;
-    font-weight: 600;
+.mldpp-hero__right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
-.mldpp-hero__left p {
+.mldpp-eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--mldpp-accent);
+    margin-bottom: 8px;
+}
+
+.mldpp-hero h1 {
     margin: 0;
-    max-width: 860px;
+    color: var(--mldpp-text);
+    font-size: 28px;
+    line-height: 1.1;
+}
+
+.mldpp-hero p {
+    margin: 10px 0 0;
+    color: var(--mldpp-muted);
     font-size: 14px;
-    color: #536b77;
+    max-width: 70ch;
+}
+
+.mldpp-version {
+    display: inline-block;
+    padding: 2px 8px;
+    margin-left: 8px;
+    border-radius: var(--mldpp-radius-pill);
+    background: var(--mldpp-accent-soft);
+    color: var(--mldpp-accent);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.6;
+    vertical-align: middle;
 }
 
 .mldpp-badge {
     display: inline-flex;
     align-items: center;
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: #114257;
-    color: #fff;
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: var(--mldpp-radius-pill);
+    background: var(--mldpp-surface);
+    border: 1px solid var(--mldpp-border);
+    color: var(--mldpp-accent);
     font-size: 12px;
     font-weight: 600;
-    letter-spacing: .02em;
+    margin-bottom: 10px;
 }
+
+/* ------------------------------------------------------------------ Tabs */
+
+.mldpp-tabs {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 0 0 20px;
+}
+
+.mldpp-tab {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: var(--mldpp-radius-pill);
+    background: var(--mldpp-surface);
+    border: 1px solid var(--mldpp-border);
+    color: var(--mldpp-text);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.mldpp-tab:hover,
+.mldpp-tab:focus {
+    border-color: var(--mldpp-accent);
+    color: var(--mldpp-accent);
+    box-shadow: none;
+    outline: none;
+}
+
+.mldpp-tab.is-active {
+    background: var(--mldpp-accent);
+    border-color: var(--mldpp-accent);
+    color: var(--mldpp-surface);
+}
+
+/* ----------------------------------------------------------------- Cards */
 
 .mldpp-grid {
     display: grid;
-    grid-template-columns: 1.15fr .85fr;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 20px;
-    align-items: start;
-    margin-bottom: 20px;
 }
 
 .mldpp-grid--bottom {
-    grid-template-columns: .8fr 1.2fr;
+    margin-top: 20px;
 }
 
 .mldpp-card {
-    background: #fff;
-    border: 1px solid #d7e6ec;
-    border-radius: 18px;
-    padding: 24px;
-    box-shadow: 0 8px 24px rgba(17, 66, 87, 0.04);
+    background: var(--mldpp-surface);
+    border: 1px solid var(--mldpp-border);
+    border-radius: var(--mldpp-radius-card);
+    padding: 20px;
+    box-shadow: var(--mldpp-shadow-card);
 }
 
 .mldpp-card h2 {
-    margin: 0 0 18px;
-    font-size: 20px;
-    color: #114257;
+    margin-top: 0;
+    margin-bottom: 16px;
+    color: var(--mldpp-text);
+    font-size: 18px;
 }
 
-.mldpp-check-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(180px, 1fr));
-    gap: 12px 18px;
+.mldpp-card .form-table th {
+    color: var(--mldpp-text);
+    font-weight: 600;
 }
 
-.mldpp-check-grid label {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    color: #344954;
+.mldpp-card .description {
+    color: var(--mldpp-muted);
 }
 
-.mldpp-check-grid input[type="checkbox"] {
-    margin-top: 2px;
+.mldpp-card code {
+    background: var(--mldpp-surface-soft);
+    border: 1px solid var(--mldpp-border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: var(--mldpp-accent);
 }
 
-.mldpp-log-table-wrap {
-    overflow-x: auto;
-}
+/* --------------------------------------------------------------- Botoes */
 
-.mldpp-list {
-    margin: 0;
-    padding-left: 18px;
-    color: #344954;
-}
-
+/* O WordPress pinta .button-primary com o azul dele. Sobrescrito aqui para que
+   nenhuma superficie do plugin escape da identidade ML. */
+.mldpp-admin-wrap .button-primary,
 .button.button-primary.button-hero,
 .mldpp-editor-button {
-    background: #114257;
-    border-color: #114257;
-    color: #fff;
+    background: var(--mldpp-accent);
+    border-color: var(--mldpp-accent);
+    color: var(--mldpp-surface);
+    border-radius: var(--mldpp-radius-control);
     box-shadow: none;
+    text-shadow: none;
 }
 
+.mldpp-admin-wrap .button-primary:hover,
+.mldpp-admin-wrap .button-primary:focus,
 .button.button-primary.button-hero:hover,
 .button.button-primary.button-hero:focus,
 .mldpp-editor-button:hover,
 .mldpp-editor-button:focus {
-    background: #0d3647;
-    border-color: #0d3647;
-    color: #fff;
+    background: var(--mldpp-text);
+    border-color: var(--mldpp-text);
+    color: var(--mldpp-surface);
+    box-shadow: none;
 }
 
-.mldpp-submitbox-wrap {
-    padding-top: 12px;
+.mldpp-admin-wrap .button-secondary,
+.mldpp-force-check {
+    background: var(--mldpp-surface);
+    border-color: var(--mldpp-border);
+    color: var(--mldpp-accent);
+    border-radius: var(--mldpp-radius-control);
+    box-shadow: none;
 }
 
-.mldpp-preview-slug {
-    display: inline-block;
-    margin-left: 8px;
-    font-size: 12px;
-    color: #5b7786;
-    min-height: 18px;
-}
-
-.mldpp-preview-slug--ready {
-    padding: 2px 8px;
-    background: #f4f9fb;
-    border: 1px solid #d7e6ec;
-    border-radius: 4px;
-    color: #114257;
-}
-
-.mldpp-slug-cell {
-    background: #f4f9fb;
-    padding: 2px 6px;
-    border-radius: 4px;
-    color: #114257;
-    font-size: 12px;
-}
-
-#wpadminbar .mldpp-admin-bar-updater .ab-icon {
-    padding-top: 6px;
-    font-size: 18px;
-}
-
-#wpadminbar .mldpp-admin-bar-updater .ab-label {
-    line-height: 30px;
-    padding-left: 4px;
-}
-
-.mldpp-debug-card pre {
-    background: #f4f9fb;
-    border: 1px solid #d7e6ec;
-    border-radius: 6px;
-    padding: 10px 12px;
-    font-size: 12px;
-    line-height: 1.5;
-    color: #114257;
-    max-height: 280px;
-    overflow: auto;
+.mldpp-admin-wrap .button-secondary:hover,
+.mldpp-admin-wrap .button-secondary:focus,
+.mldpp-force-check:hover,
+.mldpp-force-check:focus {
+    background: var(--mldpp-surface-soft);
+    border-color: var(--mldpp-accent);
+    color: var(--mldpp-accent);
 }
 
 .mldpp-force-check .dashicons {
@@ -174,63 +242,164 @@
     vertical-align: middle;
 }
 
-/* Painel do editor de blocos (Gutenberg).
-   Usa exclusivamente os tokens de cor ja definidos acima (#114257, #0d3647,
-   #5b7786, #f4f9fb, #d7e6ec). Nenhuma cor nova e introduzida aqui. */
+/* ------------------------------------------------------- Blocos internos */
+
+.mldpp-check-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px 20px;
+}
+
+.mldpp-check-grid label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--mldpp-text);
+}
+
+.mldpp-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.mldpp-kpi {
+    background: var(--mldpp-surface-soft);
+    border: 1px solid var(--mldpp-border);
+    border-radius: var(--mldpp-radius-card);
+    padding: 18px 20px;
+}
+
+.mldpp-kpi strong {
+    display: block;
+    font-size: 30px;
+    line-height: 1.1;
+    color: var(--mldpp-text);
+}
+
+.mldpp-kpi span {
+    display: block;
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--mldpp-muted);
+}
+
+.mldpp-note {
+    background: var(--mldpp-surface-soft);
+    border: 1px solid var(--mldpp-border);
+    border-radius: var(--mldpp-radius-control);
+    padding: 14px 16px;
+    color: var(--mldpp-muted);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.mldpp-list {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--mldpp-text);
+    line-height: 1.9;
+}
+
+.mldpp-log-table-wrap {
+    overflow: auto;
+    border-radius: var(--mldpp-radius-control);
+}
+
+.mldpp-slug-cell,
+.mldpp-preview-slug--ready {
+    background: var(--mldpp-surface-soft);
+    border: 1px solid var(--mldpp-border);
+    border-radius: 4px;
+    padding: 2px 8px;
+    color: var(--mldpp-accent);
+}
+
+.mldpp-preview-slug {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 12px;
+    color: var(--mldpp-muted);
+    min-height: 18px;
+}
+
+.mldpp-submitbox-wrap {
+    padding-top: 12px;
+}
+
+.mldpp-debug-card {
+    margin-top: 20px;
+}
+
+.mldpp-debug-card pre {
+    background: var(--mldpp-surface-soft);
+    border: 1px solid var(--mldpp-border);
+    border-radius: var(--mldpp-radius-control);
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--mldpp-text);
+    max-height: 280px;
+    overflow: auto;
+}
+
+#wpadminbar .mldpp-admin-bar-updater .ab-icon:before {
+    content: "\f463";
+    top: 2px;
+}
+
+/* --------------------------------------- Painel do editor de blocos (WP) */
+
 .mldpp-editor-panel__inner {
     width: 100%;
 }
 
 .mldpp-editor-panel__label {
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: .12em;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
-    color: #114257;
+    color: var(--mldpp-accent);
     margin-bottom: 8px;
 }
 
 .mldpp-editor-panel .mldpp-editor-button {
     width: 100%;
     justify-content: center;
-    background: #114257;
-    border-color: #114257;
-    color: #fff;
-    box-shadow: none;
-}
-
-.mldpp-editor-panel .mldpp-editor-button:hover,
-.mldpp-editor-panel .mldpp-editor-button:focus {
-    background: #0d3647;
-    border-color: #0d3647;
-    color: #fff;
 }
 
 .mldpp-editor-panel__hint {
     margin: 8px 0 0;
     font-size: 12px;
     line-height: 1.5;
-    color: #5b7786;
+    color: var(--mldpp-muted);
 }
 
 .mldpp-editor-panel__hint code {
     font-size: 11px;
     padding: 2px 8px;
-    background: #f4f9fb;
-    border: 1px solid #d7e6ec;
+    background: var(--mldpp-surface-soft);
+    border: 1px solid var(--mldpp-border);
     border-radius: 4px;
-    color: #114257;
+    color: var(--mldpp-accent);
     word-break: break-all;
 }
 
-@media (max-width: 1100px) {
-    .mldpp-grid,
-    .mldpp-grid--bottom {
-        grid-template-columns: 1fr;
-    }
+/* ------------------------------------------------------------ Responsivo */
 
+@media (max-width: 1100px) {
     .mldpp-hero {
         flex-direction: column;
         align-items: flex-start;
+        padding: 20px;
+    }
+
+    .mldpp-hero h1 {
+        font-size: 24px;
+    }
+
+    .mldpp-hero__right {
+        justify-content: flex-start;
     }
 }
