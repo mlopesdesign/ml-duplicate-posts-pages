@@ -4,7 +4,7 @@
 > **Nao edite a mao.** Regere apos qualquer alteracao no plugin e antes do commit.
 
 - **Slug (imutavel):** `ml-duplicate-posts-pages`
-- **Versao:** `1.3.0` (readme Stable tag: `1.3.0`)
+- **Versao:** `1.4.0` (readme Stable tag: `1.4.0`)
 - **Text domain:** `ml-duplicate-posts-pages`
 - **Requisitos:** WordPress 5.8+ (testado ate 6.8), PHP 7.4+
 - **Gerado em:** 2026-07-26
@@ -25,6 +25,7 @@ ml-duplicate-posts-pages/
     admin.css
   assets/js/
     admin.js
+    editor.js
   includes/
     class-ml-duplicate-posts-pages.php
     class-mldpp-github-updater.php
@@ -34,7 +35,7 @@ ml-duplicate-posts-pages/
 
 | Arquivo | Linhas | Classes | Metodos | Hooks |
 | --- | --- | --- | --- | --- |
-| `ml-duplicate-posts-pages/includes/class-ml-duplicate-posts-pages.php` | 1467 | `Plugin` | 40 | 19 |
+| `ml-duplicate-posts-pages/includes/class-ml-duplicate-posts-pages.php` | 1730 | `Plugin` | 46 | 20 |
 | `ml-duplicate-posts-pages/includes/class-mldpp-github-updater.php` | 227 | `GitHub_Updater` | 8 | 4 |
 | `ml-duplicate-posts-pages/ml-duplicate-posts-pages.php` | 37 | - | - | - |
 | `ml-duplicate-posts-pages/uninstall.php` | 18 | - | - | - |
@@ -56,7 +57,7 @@ WordPress carrega ml-duplicate-posts-pages/ml-duplicate-posts-pages.php
 
 | Constante | Valor |
 | --- | --- |
-| `MLDPP_VERSION` | `'1.3.0'` |
+| `MLDPP_VERSION` | `'1.4.0'` |
 | `MLDPP_FILE` | `__FILE__` |
 | `MLDPP_DIR` | `plugin_dir_path(__FILE__)` |
 | `MLDPP_URL` | `plugin_dir_url(__FILE__)` |
@@ -78,6 +79,7 @@ WordPress carrega ml-duplicate-posts-pages/ml-duplicate-posts-pages.php
 | `admin_init` | `handle_bulk_duplicate_request()` | 10 | `class-ml-duplicate-posts-pages.php` |
 | `admin_init` | `force_check_for_update()` | 10 | `class-ml-duplicate-posts-pages.php` |
 | `admin_enqueue_scripts` | `enqueue_assets()` | 10 | `class-ml-duplicate-posts-pages.php` |
+| `enqueue_block_editor_assets` | `enqueue_block_editor_assets()` | 10 | `class-ml-duplicate-posts-pages.php` |
 | `wp_ajax_mldpp_preview_slug` | `ajax_preview_slug()` | 10 | `class-ml-duplicate-posts-pages.php` |
 | `admin_init` | `register_bulk_actions()` | 5 | `class-ml-duplicate-posts-pages.php` |
 | `admin_bar_menu` | `add_admin_bar_button()` | 90 | `class-ml-duplicate-posts-pages.php` |
@@ -205,7 +207,7 @@ Colisao e resolvida por `duplicate_slug_exists()`, que consulta `wp_posts` por
 | --- | --- | --- |
 | `mldpp_github_release` | 6 horas | Cache da resposta da GitHub Releases API |
 
-Detectados no codigo: `_edit_last`, `_mldpp_duplicated_at`, `_mldpp_duplicated_by`, `_mldpp_slug_base`, `_mldpp_source_post`, `_wp_page_template`, `mldpp_github_release`, `mldpp_logs`, `mldpp_settings`, `update_plugins`
+Detectados no codigo: `_edit_last`, `_mldpp_duplicated_at`, `_mldpp_duplicated_by`, `_mldpp_slug_base`, `_mldpp_source_post`, `_sku`, `_wp_page_template`, `mldpp_github_release`, `mldpp_logs`, `mldpp_settings`, `update_plugins`
 
 ## 8. Superficie de seguranca
 
@@ -307,46 +309,52 @@ ou "Diagnostico do updater" (`?mldpp_debug=1` no painel do plugin).
 
 | Metodo | Visibilidade | Linha |
 | --- | --- | --- |
-| `instance()` | public static | 18 |
-| `activate()` | public static | 25 |
-| `__construct()` | public | 35 |
-| `load_textdomain()` | public | 57 |
-| `register_admin_menu()` | public | 61 |
-| `register_help_tabs()` | public | 77 |
-| `register_settings()` | public | 120 |
-| `enqueue_assets()` | public | 124 |
-| `plugin_action_links()` | public | 170 |
-| `get_default_settings_static()` | public static | 178 |
-| `get_settings()` | private | 199 |
-| `sanitize_settings()` | public | 204 |
-| `current_user_can_duplicate()` | private | 268 |
-| `is_post_type_enabled()` | private | 283 |
-| `add_row_action()` | public | 288 |
-| `register_bulk_actions()` | public | 315 |
-| `register_bulk_action()` | public | 329 |
-| `handle_native_bulk_action_redirect()` | public | 336 |
-| `add_admin_bar_updater_node()` | public | 358 |
-| `force_check_for_update()` | public | 395 |
-| `get_contextual_post()` | private | 435 |
-| `add_admin_bar_button()` | public | 457 |
-| `render_submitbox_button()` | public | 484 |
-| `ajax_preview_slug()` | public | 509 |
-| `handle_duplicate_request()` | public | 539 |
-| `handle_bulk_duplicate_request()` | public | 570 |
-| `render_admin_notices()` | public | 626 |
-| `generate_versioned_slug()` | private | 675 |
-| `strip_slug_tokens()` | private | 713 |
-| `compose_slug()` | private | 734 |
-| `increment_last_numeric_token()` | private | 758 |
-| `build_with_progressive_number()` | private | 787 |
-| `sanitize_slug_token()` | private | 805 |
-| `get_duplicate_slug_base()` | private | 822 |
-| `duplicate_slug_exists()` | private | 853 |
-| `duplicate_post()` | private | 873 |
-| `write_log()` | private | 1019 |
-| `get_available_post_types()` | private | 1046 |
-| `get_logs()` | private | 1061 |
-| `render_dashboard()` | public | 1086 |
+| `instance()` | public static | 24 |
+| `activate()` | public static | 31 |
+| `__construct()` | public | 41 |
+| `load_textdomain()` | public | 64 |
+| `register_admin_menu()` | public | 68 |
+| `register_help_tabs()` | public | 84 |
+| `register_settings()` | public | 127 |
+| `enqueue_assets()` | public | 131 |
+| `enqueue_block_editor_assets()` | public | 184 |
+| `plugin_action_links()` | public | 243 |
+| `get_default_settings_static()` | public static | 251 |
+| `get_settings()` | private | 273 |
+| `sanitize_settings()` | public | 278 |
+| `current_user_can_duplicate()` | private | 343 |
+| `is_post_type_enabled()` | private | 358 |
+| `add_row_action()` | public | 363 |
+| `register_bulk_actions()` | public | 390 |
+| `register_bulk_action()` | public | 404 |
+| `handle_native_bulk_action_redirect()` | public | 411 |
+| `add_admin_bar_updater_node()` | public | 433 |
+| `force_check_for_update()` | public | 470 |
+| `get_contextual_post()` | private | 510 |
+| `add_admin_bar_button()` | public | 532 |
+| `render_submitbox_button()` | public | 559 |
+| `ajax_preview_slug()` | public | 584 |
+| `handle_duplicate_request()` | public | 614 |
+| `handle_bulk_duplicate_request()` | public | 645 |
+| `render_admin_notices()` | public | 701 |
+| `generate_versioned_slug()` | private | 750 |
+| `strip_slug_tokens()` | private | 788 |
+| `compose_slug()` | private | 809 |
+| `increment_last_numeric_token()` | private | 833 |
+| `build_with_progressive_number()` | private | 862 |
+| `sanitize_slug_token()` | private | 880 |
+| `get_duplicate_slug_base()` | private | 897 |
+| `duplicate_slug_exists()` | private | 928 |
+| `duplicate_post()` | private | 948 |
+| `duplicate_children()` | private | 1136 |
+| `ensure_unique_sku()` | private | 1188 |
+| `sku_exists()` | private | 1207 |
+| `sync_woocommerce_product()` | private | 1225 |
+| `apply_title_tokens()` | private | 1244 |
+| `write_log()` | private | 1261 |
+| `get_available_post_types()` | private | 1289 |
+| `get_logs()` | private | 1304 |
+| `render_dashboard()` | public | 1329 |
 
 ### `ml-duplicate-posts-pages/includes/class-mldpp-github-updater.php` - `MLDPP\\GitHub_Updater`
 

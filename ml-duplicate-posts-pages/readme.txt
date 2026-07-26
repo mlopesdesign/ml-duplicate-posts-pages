@@ -4,7 +4,7 @@ Tags: duplicate, duplicate post, duplicate page, cpt
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.3.0
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,9 +18,10 @@ ML Duplicate Posts & Pages permite duplicar conteúdos do WordPress com mais con
 * Suporte a custom post types habilitáveis
 * Ação rápida "Duplicar"
 * Ação em massa "Duplicar"
-* Botão no editor do conteúdo
+* Botão no editor clássico e painel no editor de blocos (Gutenberg)
 * Escolha do que copiar: imagem destacada, taxonomias, metadados, comentários, autor, template e ordem
-* Título original preservado na duplicação
+* Duplicação de páginas filhas e de variações de produto WooCommerce, com SKU único
+* Título original preservado por padrão, com prefixo/sufixo opcionais
 * Slug versionado automaticamente na cópia
 * Status da nova cópia
 * Logs de duplicação
@@ -35,6 +36,17 @@ ML Duplicate Posts & Pages permite duplicar conteúdos do WordPress com mais con
 4. Configure os tipos de conteúdo e opções de cópia
 
 == Changelog ==
+
+= 1.4.0 =
+* Adicionado (critico): painel no editor de blocos (Gutenberg). Ate a 1.3.0 o botao do editor usava apenas `post_submitbox_misc_actions`, hook que nao dispara no editor de blocos — em qualquer site moderno o plugin era invisivel dentro do editor. O novo `assets/js/editor.js` registra um painel em `PluginPostStatusInfo` com o botao de duplicar e a pre-visualizacao do slug. Escrito com `wp.element.createElement` em vez de JSX, sem build step. Compativel com `wp.editor` (WordPress 6.6+) e com o legado `wp.editPost`.
+* Adicionado (critico): duplicacao da arvore de conteudos filhos. Paginas subordinadas e variacoes de produto WooCommerce (`product_variation`) passam a acompanhar o conteudo duplicado. Antes, um produto variavel duplicado nascia sem nenhuma variacao utilizavel. Recursao com teto de 5 niveis de profundidade e 200 filhos por nivel. Anexos ficam de fora de proposito: a midia e compartilhada entre original e copia.
+* Adicionado: geracao de SKU unico para produtos e variacoes duplicados. O WooCommerce exige SKU unico; sem isso a copia herdava o SKU do original e o produto ficava invalido no painel da loja.
+* Adicionado: ressincronizacao WooCommerce apos a copia (`wc_delete_product_transients` e `WC_Product_Variable::sync`), para que preco, estoque e lista de variacoes reflitam a copia e nao o original.
+* Adicionado: opcao "Conteudos filhos" nas configuracoes, ligada por padrao.
+* Adicionado: coluna "Filhos" na tabela de logs, com a quantidade de descendentes criados em cada duplicacao.
+* Corrigido: `title_prefix` e `title_suffix` existiam nos defaults desde a 1.2.0 mas o `sanitize_settings()` forcava os dois para string vazia e nao havia interface — eram codigo morto. Agora sao campos reais no painel, aplicados ao titulo da copia. O padrao continua vazio, preservando o titulo original.
+* Corrigido: o meta `_elementor_css` deixa de ser copiado. O Elementor mantem o CSS gerado em cache por ID do post; copiar fazia a copia herdar o estilo do original.
+* Melhorado: os metadados de uma variacao de produto sao sempre copiados, mesmo com a opcao global "Metadados" desligada. Uma variacao sem metadados nao tem atributo, preco nem estoque.
 
 = 1.3.0 =
 * Corrigido (critico): o versionamento do slug passa a usar SEMPRE o slug atual do conteudo escolhido como base. Ate a 1.2.2 a base vinha do meta `_mldpp_slug_base`, congelado no post raiz, o que ignorava o item realmente selecionado e qualquer slug editado manualmente. Escolheu `pagina-205` -> gera `pagina-206`. Escolheu a copia `pagina-206` -> gera `pagina-207`.

@@ -9,6 +9,12 @@ class Plugin {
     /** Limite de tentativas ao procurar um slug livre (evita loop infinito). */
     const SLUG_MAX_ATTEMPTS = 1000;
 
+    /** Profundidade maxima da arvore de descendentes duplicados. */
+    const MAX_CHILD_DEPTH = 5;
+
+    /** Teto de filhos processados por nivel, para nao travar o request. */
+    const MAX_CHILDREN_PER_LEVEL = 200;
+
     private static $instance = null;
     private $option_name = 'mldpp_settings';
     private $log_option_name = 'mldpp_logs';
@@ -40,6 +46,7 @@ class Plugin {
         add_action('admin_init', array($this, 'handle_bulk_duplicate_request'));
         add_action('admin_init', array($this, 'force_check_for_update'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
+        add_action('enqueue_block_editor_assets', array($this, 'enqueue_block_editor_assets'));
         add_action('wp_ajax_mldpp_preview_slug', array($this, 'ajax_preview_slug'));
 
         add_filter('post_row_actions', array($this, 'add_row_action'), 10, 2);
@@ -167,6 +174,72 @@ class Plugin {
         ));
     }
 
+    /**
+     * Painel no editor de blocos.
+     *
+     * O botao do editor classico usa `post_submitbox_misc_actions`, hook que nao
+     * dispara no Gutenberg. Sem este metodo o plugin fica invisivel dentro do
+     * editor em qualquer site moderno.
+     */
+    public function enqueue_block_editor_assets() {
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+
+        if (!$screen || $screen->base !== 'post') {
+            return;
+        }
+
+        $post = get_post();
+
+        if (!$post instanceof \WP_Post || empty($post->ID)) {
+            return;
+        }
+
+        if (!$this->current_user_can_duplicate() || !$this->is_post_type_enabled($post->post_type)) {
+            return;
+        }
+
+        if (!current_user_can('edit_post', $post->ID) || get_post_status($post->ID) === 'auto-draft') {
+            return;
+        }
+
+        wp_enqueue_script(
+            'mldpp-editor',
+            MLDPP_URL . 'assets/js/editor.js',
+            array('wp-plugins', 'wp-element', 'wp-components', 'wp-data', 'wp-i18n'),
+            MLDPP_VERSION,
+            true
+        );
+
+        wp_enqueue_style(
+            'mldpp-admin',
+            MLDPP_URL . 'assets/css/admin.css',
+            array(),
+            MLDPP_VERSION
+        );
+
+        $duplicate_url = wp_nonce_url(
+            admin_url('admin.php?action=mldpp_duplicate_post&post=' . absint($post->ID)),
+            'mldpp_duplicate_post_' . absint($post->ID)
+        );
+
+        wp_localize_script('mldpp-editor', 'mldppEditor', array(
+            'postId'         => (int) $post->ID,
+            'duplicateUrl'   => $duplicate_url,
+            'ajaxUrl'        => admin_url('admin-ajax.php'),
+            'previewNonce'   => wp_create_nonce('mldpp_preview_slug'),
+            'previewAction'  => 'mldpp_preview_slug',
+            'unsavedWarning' => true,
+            'i18n'           => array(
+                'panelTitle'     => __('ML Duplicate', 'ml-duplicate-posts-pages'),
+                'buttonLabel'    => __('Duplicar este conteúdo', 'ml-duplicate-posts-pages'),
+                'previewTitle'   => __('Slug previsto:', 'ml-duplicate-posts-pages'),
+                'previewError'   => __('Não foi possível calcular o slug.', 'ml-duplicate-posts-pages'),
+                'loading'        => __('Calculando o slug…', 'ml-duplicate-posts-pages'),
+                'unsavedWarning' => __('A cópia parte da última versão salva. Salve antes de duplicar para incluir alterações recentes.', 'ml-duplicate-posts-pages'),
+            ),
+        ));
+    }
+
     public function plugin_action_links($links) {
         array_unshift(
             $links,
@@ -185,6 +258,7 @@ class Plugin {
             'duplicate_menu_order'     => 1,
             'duplicate_template'       => 1,
             'duplicate_author'         => 1,
+            'duplicate_children'       => 1,
             'copy_status_mode'         => 'draft',
             'title_prefix'             => '',
             'title_suffix'             => '',
@@ -229,6 +303,7 @@ class Plugin {
             'duplicate_menu_order',
             'duplicate_template',
             'duplicate_author',
+            'duplicate_children',
         );
 
         foreach ($checkboxes as $key) {
@@ -240,8 +315,8 @@ class Plugin {
             ? $input['copy_status_mode']
             : $defaults['copy_status_mode'];
 
-        $output['title_prefix'] = '';
-        $output['title_suffix'] = '';
+        $output['title_prefix'] = isset($input['title_prefix']) ? sanitize_text_field(wp_unslash($input['title_prefix'])) : '';
+        $output['title_suffix'] = isset($input['title_suffix']) ? sanitize_text_field(wp_unslash($input['title_suffix'])) : '';
 
         $output['slug_prefix'] = isset($input['slug_prefix']) ? $this->sanitize_slug_token(wp_unslash($input['slug_prefix'])) : '';
         $output['slug_suffix'] = isset($input['slug_suffix']) ? $this->sanitize_slug_token(wp_unslash($input['slug_suffix'])) : '';
@@ -877,19 +952,24 @@ class Plugin {
             return new \WP_Error('mldpp_invalid_post', __('Conteúdo original não encontrado.', 'ml-duplicate-posts-pages'));
         }
 
-        if (!$this->is_post_type_enabled($post->post_type)) {
+        $settings = $this->get_settings();
+        $override = wp_parse_args($args, array(
+            'copy_status_mode'  => null,
+            'force_post_status' => null,
+            'post_parent'       => null,
+            'is_child'          => false,
+            'depth'             => 0,
+        ));
+
+        // Filhos (paginas subordinadas, variacoes de produto) nao precisam estar
+        // habilitados nas configuracoes: eles acompanham o pai por definicao.
+        if (empty($override['is_child']) && !$this->is_post_type_enabled($post->post_type)) {
             return new \WP_Error('mldpp_post_type_disabled', __('Este tipo de conteúdo não está habilitado para duplicação.', 'ml-duplicate-posts-pages'));
         }
 
         if (!current_user_can('edit_post', $post->ID)) {
             return new \WP_Error('mldpp_no_cap', __('Sem permissão para duplicar este conteúdo.', 'ml-duplicate-posts-pages'));
         }
-
-        $settings = $this->get_settings();
-        $override = wp_parse_args($args, array(
-            'copy_status_mode'  => null,
-            'force_post_status' => null,
-        ));
 
         $target_status = 'draft';
         if (!empty($override['force_post_status'])) {
@@ -898,7 +978,13 @@ class Plugin {
             $target_status = $post->post_status;
         }
 
-        $new_title = $post->post_title;
+        // Variacoes de produto precisam manter o proprio status, senao o produto
+        // duplicado nasce sem variacoes utilizaveis.
+        if ($post->post_type === 'product_variation') {
+            $target_status = $post->post_status;
+        }
+
+        $new_title = $this->apply_title_tokens($post->post_title, $settings, $override);
         $new_slug  = $this->generate_versioned_slug($post);
 
         $new_post_data = array(
@@ -910,7 +996,7 @@ class Plugin {
             'comment_status'        => $post->comment_status,
             'ping_status'           => $post->ping_status,
             'post_password'         => $post->post_password,
-            'post_parent'           => $post->post_parent,
+            'post_parent'           => ($override['post_parent'] !== null) ? absint($override['post_parent']) : $post->post_parent,
             'menu_order'            => !empty($settings['duplicate_menu_order']) ? (int) $post->menu_order : 0,
             'post_author'           => !empty($settings['duplicate_author']) ? (int) $post->post_author : get_current_user_id(),
             'post_content_filtered' => $post->post_content_filtered,
@@ -950,7 +1036,12 @@ class Plugin {
             }
         }
 
-        if (!empty($settings['duplicate_meta'])) {
+        // Uma variacao de produto sem metadados nao tem atributo, preco nem estoque:
+        // seria um registro inutil. Por isso os metadados dela sao sempre copiados,
+        // independentemente da opcao global.
+        $must_copy_meta = ($post->post_type === 'product_variation');
+
+        if (!empty($settings['duplicate_meta']) || $must_copy_meta) {
             $meta = get_post_meta($post->ID);
             $skip_keys = array(
                 '_edit_lock',
@@ -960,6 +1051,9 @@ class Plugin {
                 '_wp_trash_meta_time',
                 '_mldpp_source_post',
                 '_mldpp_slug_base',
+                // CSS gerado pelo Elementor fica em cache por ID do post: copiar
+                // faria a copia herdar o estilo do original. Removido para regerar.
+                '_elementor_css',
             );
 
             foreach ($meta as $meta_key => $values) {
@@ -1009,14 +1103,162 @@ class Plugin {
         update_post_meta($new_post_id, '_mldpp_duplicated_at', current_time('mysql'));
         update_post_meta($new_post_id, '_mldpp_duplicated_by', get_current_user_id());
 
-        $this->write_log($post->ID, $new_post_id, $post->post_type, $target_status, $new_slug);
+        $this->ensure_unique_sku($new_post_id);
+
+        $children_created = 0;
+        if (!empty($settings['duplicate_children'])) {
+            $children_created = $this->duplicate_children($post, $new_post_id, $override, $target_status);
+        }
+
+        $this->sync_woocommerce_product($new_post_id, $post->post_type);
+
+        if (empty($override['is_child'])) {
+            $this->write_log($post->ID, $new_post_id, $post->post_type, $target_status, $new_slug, $children_created);
+        }
 
         do_action('mldpp_after_duplicate_post', $new_post_id, $post->ID, $post);
 
         return $new_post_id;
     }
 
-    private function write_log($source_id, $new_id, $post_type, $new_status, $new_slug = '') {
+    /**
+     * Duplica os filhos diretos e, recursivamente, os netos.
+     *
+     * Cobre paginas subordinadas (post types hierarquicos) e variacoes de produto
+     * WooCommerce, que sao posts `product_variation` filhos do `product`. Sem isso
+     * um produto variavel duplicado nasce sem nenhuma variacao utilizavel.
+     *
+     * Anexos ficam de fora de proposito: a midia e compartilhada entre original e
+     * copia, duplicar criaria entradas redundantes na biblioteca.
+     *
+     * @return int Total de descendentes criados.
+     */
+    private function duplicate_children($source_post, $new_parent_id, $override, $target_status) {
+        $depth = isset($override['depth']) ? absint($override['depth']) : 0;
+
+        if ($depth >= self::MAX_CHILD_DEPTH) {
+            return 0;
+        }
+
+        global $wpdb;
+
+        $child_ids = $wpdb->get_col($wpdb->prepare(
+            "SELECT ID FROM {$wpdb->posts}
+             WHERE post_parent = %d
+               AND post_status NOT IN ('trash', 'auto-draft')
+               AND post_type NOT IN ('attachment', 'revision', 'nav_menu_item')
+             ORDER BY menu_order ASC, ID ASC
+             LIMIT %d",
+            absint($source_post->ID),
+            self::MAX_CHILDREN_PER_LEVEL
+        ));
+
+        if (empty($child_ids)) {
+            return 0;
+        }
+
+        $created = 0;
+
+        foreach ($child_ids as $child_id) {
+            $child_id = absint($child_id);
+
+            if ($child_id === absint($source_post->ID)) {
+                continue;
+            }
+
+            $new_child_id = $this->duplicate_post($child_id, array(
+                'post_parent'       => $new_parent_id,
+                'is_child'          => true,
+                'depth'             => $depth + 1,
+                'force_post_status' => $target_status,
+            ));
+
+            if (!is_wp_error($new_child_id) && $new_child_id) {
+                $created++;
+            }
+        }
+
+        return $created;
+    }
+
+    /**
+     * WooCommerce exige SKU unico. Sem tratar, a copia herda o SKU do original e o
+     * produto duplicado fica invalido no painel da loja.
+     */
+    private function ensure_unique_sku($post_id) {
+        $sku = get_post_meta($post_id, '_sku', true);
+
+        if ($sku === '' || $sku === false || $sku === null) {
+            return;
+        }
+
+        $base  = (string) $sku;
+        $index = 1;
+        $candidate = $base . '-' . $index;
+
+        while ($this->sku_exists($candidate, $post_id) && $index < self::SLUG_MAX_ATTEMPTS) {
+            $index++;
+            $candidate = $base . '-' . $index;
+        }
+
+        update_post_meta($post_id, '_sku', $candidate);
+    }
+
+    private function sku_exists($sku, $exclude_id) {
+        global $wpdb;
+
+        $found = $wpdb->get_var($wpdb->prepare(
+            "SELECT post_id FROM {$wpdb->postmeta}
+             WHERE meta_key = '_sku' AND meta_value = %s AND post_id <> %d
+             LIMIT 1",
+            $sku,
+            absint($exclude_id)
+        ));
+
+        return (bool) $found;
+    }
+
+    /**
+     * Limpa caches e ressincroniza o produto duplicado para que preco, estoque e
+     * lista de variacoes reflitam a copia, e nao o original.
+     */
+    private function sync_woocommerce_product($post_id, $post_type) {
+        if ($post_type !== 'product') {
+            return;
+        }
+
+        if (function_exists('wc_delete_product_transients')) {
+            wc_delete_product_transients($post_id);
+        }
+
+        if (class_exists('\WC_Product_Variable')) {
+            \WC_Product_Variable::sync($post_id);
+        }
+    }
+
+    /**
+     * Aplica prefixo/sufixo configurados ao titulo da copia.
+     * Ate a 1.3.0 os campos existiam nos defaults mas eram forcados a string vazia
+     * pelo sanitize, sem interface: eram codigo morto.
+     */
+    private function apply_title_tokens($title, $settings, $override) {
+        if (!empty($override['is_child'])) {
+            return $title;
+        }
+
+        $prefix = isset($settings['title_prefix']) ? trim((string) $settings['title_prefix']) : '';
+        $suffix = isset($settings['title_suffix']) ? trim((string) $settings['title_suffix']) : '';
+
+        if ($prefix === '' && $suffix === '') {
+            return $title;
+        }
+
+        $composed = trim($prefix . ' ' . $title . ' ' . $suffix);
+
+        return ($composed !== '') ? $composed : $title;
+    }
+
+    private function write_log($source_id, $new_id, $post_type, $new_status, $new_slug = '', $children = 0) {
         $settings = $this->get_settings();
         $logs = get_option($this->log_option_name, array());
         if (!is_array($logs)) {
@@ -1031,6 +1273,7 @@ class Plugin {
             'post_type'  => sanitize_key($post_type),
             'new_status' => sanitize_key($new_status),
             'new_slug'   => sanitize_title($new_slug),
+            'children'   => absint($children),
             'user_id'    => get_current_user_id(),
             'user_name'  => $user && !empty($user->display_name) ? $user->display_name : '',
         );
@@ -1146,7 +1389,9 @@ class Plugin {
                                         <label><input type="checkbox" name="<?php echo esc_attr($this->option_name); ?>[duplicate_menu_order]" value="1" <?php checked(!empty($settings['duplicate_menu_order'])); ?>> <span>Ordem de menu</span></label>
                                         <label><input type="checkbox" name="<?php echo esc_attr($this->option_name); ?>[duplicate_template]" value="1" <?php checked(!empty($settings['duplicate_template'])); ?>> <span>Template da página</span></label>
                                         <label><input type="checkbox" name="<?php echo esc_attr($this->option_name); ?>[duplicate_author]" value="1" <?php checked(!empty($settings['duplicate_author'])); ?>> <span>Autor original</span></label>
+                                        <label><input type="checkbox" name="<?php echo esc_attr($this->option_name); ?>[duplicate_children]" value="1" <?php checked(!empty($settings['duplicate_children'])); ?>> <span>Conteúdos filhos</span></label>
                                     </div>
+                                    <p class="description">"Conteúdos filhos" duplica a árvore subordinada junto com o conteúdo escolhido: páginas filhas de uma página e variações de um produto WooCommerce. Sem isso, um produto variável duplicado nasce sem nenhuma variação utilizável. Anexos ficam de fora de propósito — a mídia é compartilhada entre original e cópia. Profundidade máxima de <?php echo absint(self::MAX_CHILD_DEPTH); ?> níveis, até <?php echo absint(self::MAX_CHILDREN_PER_LEVEL); ?> filhos por nível.</p>
                                 </td>
                             </tr>
 
@@ -1163,8 +1408,24 @@ class Plugin {
                             <tr>
                                 <th scope="row">Título e slug da cópia</th>
                                 <td>
-                                    <p class="description">O título original é preservado automaticamente. O slug da cópia recebe versionamento inteligente baseado no slug original.</p>
+                                    <p class="description">O título original é preservado por padrão. O slug da cópia recebe versionamento inteligente baseado no slug do conteúdo escolhido.</p>
                                     <p class="description">Detecção do último bloco numérico: <code>samba-2-guimaraes-212</code> → <code>samba-2-guimaraes-213</code>, <code>pagina-15-historia</code> → <code>pagina-16-historia</code>, <code>post-007</code> → <code>post-008</code>. Quando não há número, numeração progressiva: <code>minha-pagina</code> → <code>minha-pagina-2</code>, <code>minha-pagina-3</code>.</p>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row"><label for="mldpp-title-prefix">Prefixo do título (opcional)</label></th>
+                                <td>
+                                    <input type="text" id="mldpp-title-prefix" class="regular-text" name="<?php echo esc_attr($this->option_name); ?>[title_prefix]" value="<?php echo esc_attr($settings['title_prefix']); ?>" placeholder="ex: Cópia de">
+                                    <p class="description">Texto adicionado antes do título da cópia. Vazio mantém o título original intacto. Ex.: <code>Cópia de</code> + <code>Minha página</code> = <code>Cópia de Minha página</code>. Não afeta o slug nem os conteúdos filhos.</p>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <th scope="row"><label for="mldpp-title-suffix">Sufixo do título (opcional)</label></th>
+                                <td>
+                                    <input type="text" id="mldpp-title-suffix" class="regular-text" name="<?php echo esc_attr($this->option_name); ?>[title_suffix]" value="<?php echo esc_attr($settings['title_suffix']); ?>" placeholder="ex: (rascunho)">
+                                    <p class="description">Texto adicionado depois do título da cópia. Ex.: <code>Minha página</code> + <code>(rascunho)</code> = <code>Minha página (rascunho)</code>.</p>
                                 </td>
                             </tr>
 
@@ -1307,6 +1568,7 @@ class Plugin {
                                         <th>Origem</th>
                                         <th>Nova cópia</th>
                                         <th>Slug gerado</th>
+                                        <th>Filhos</th>
                                         <th>Status</th>
                                         <th>Usuário</th>
                                     </tr>
@@ -1319,6 +1581,7 @@ class Plugin {
                                             <td><a href="<?php echo esc_url(get_edit_post_link($log['source_id'])); ?>">#<?php echo esc_html($log['source_id']); ?></a></td>
                                             <td><a href="<?php echo esc_url(get_edit_post_link($log['new_id'])); ?>">#<?php echo esc_html($log['new_id']); ?></a></td>
                                             <td><code class="mldpp-slug-cell"><?php echo esc_html(!empty($log['new_slug']) ? $log['new_slug'] : '-'); ?></code></td>
+                                            <td><?php echo !empty($log['children']) ? esc_html(absint($log['children'])) : '&mdash;'; ?></td>
                                             <td><?php echo esc_html($log['new_status']); ?></td>
                                             <td><?php echo esc_html($log['user_name']); ?></td>
                                         </tr>

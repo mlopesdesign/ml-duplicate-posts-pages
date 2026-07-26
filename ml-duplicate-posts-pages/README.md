@@ -6,12 +6,11 @@ administrativo no padrao ML.
 
 ## Ultima release
 
-**v1.3.0** - correcao critica do versionamento de slug (a base passa a ser o slug do
-conteudo escolhido), botao da admin bar reativado, acao em massa para todos os CPTs
-habilitados, prefixo/sufixo sem acumulo, `wp_slash` nos metadados copiados e CI com
-validacao de versao e de estrutura do ZIP.
+**v1.4.0** - painel no editor de blocos (Gutenberg), duplicacao de paginas filhas e de
+variacoes de produto WooCommerce com SKU unico, prefixo/sufixo de titulo (antes codigo
+morto) e `_elementor_css` fora da copia.
 
-Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages/releases/tag/v1.3.0
+Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages/releases/tag/v1.4.0
 
 ## Mapa tecnico
 
@@ -27,7 +26,7 @@ node tools/graphify.js          # regera o GRAPHIFY.md
 node tools/graphify.js --check  # falha se estiver desatualizado (rodado no CI)
 ```
 
-## Recursos (v1.3.x)
+## Recursos (v1.4.x)
 
 - Duplicacao de posts, paginas e custom post types
 - Acao rapida "Duplicar" na listagem
