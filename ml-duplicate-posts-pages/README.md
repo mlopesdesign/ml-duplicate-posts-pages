@@ -10,7 +10,7 @@ administrativo no padrao ML.
 variacoes de produto WooCommerce com SKU unico, prefixo/sufixo de titulo (antes codigo
 morto) e `_elementor_css` fora da copia.
 
-Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages/releases/tag/v1.5.0
+Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages-releases/releases/tag/v1.5.1
 
 ## Mapa tecnico
 
@@ -80,7 +80,7 @@ ml-duplicate-posts-pages/
 
 ## Atualizacao automatica
 
-O updater consulta `api.github.com/repos/mlopesdesign/ml-duplicate-posts-pages/releases/latest`
+O updater consulta `api.github.com/repos/mlopesdesign/ml-duplicate-posts-pages-releases/releases/latest`
 e prefere o asset cujo nome segue o padrao `ml-duplicate-posts-pages-<versao>.zip`.
 A instalacao ocorre sem perder configuracoes.
 

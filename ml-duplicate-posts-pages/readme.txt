@@ -4,7 +4,7 @@ Tags: duplicate, duplicate post, duplicate page, cpt
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.5.0
+Stable tag: 1.5.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -36,6 +36,10 @@ ML Duplicate Posts & Pages permite duplicar conteúdos do WordPress com mais con
 4. Configure os tipos de conteúdo e opções de cópia
 
 == Changelog ==
+
+= 1.5.1 =
+* Alterado (atualizacoes): o updater passa a consultar o repositorio publico `mlopesdesign/ml-duplicate-posts-pages-releases`, que guarda somente os ZIPs das versoes. O codigo-fonte foi movido para repositorio privado; sem esta mudanca, a API do GitHub responderia 404 e as instalacoes deixariam de receber atualizacoes.
+* Nenhuma funcionalidade foi alterada.
 
 = 1.5.0 =
 * Alterado (identidade visual): o painel administrativo passa a seguir o sistema de design ML Lopes Design usado nos demais plugins da linha. Header em card branco com acento de 6px a esquerda no accent, raio 20px; navegacao em abas tipo pilula com a ativa preenchida no accent; cards em grid `auto-fit minmax(280px, 1fr)` com raio 16px; eyebrow em caixa alta com `letter-spacing: .12em`; pilula de versao ao lado do titulo.
