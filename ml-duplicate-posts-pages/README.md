@@ -10,7 +10,7 @@ administrativo no padrao ML.
 variacoes de produto WooCommerce com SKU unico, prefixo/sufixo de titulo (antes codigo
 morto) e `_elementor_css` fora da copia.
 
-Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages-releases/releases/tag/v1.5.1
+Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages-releases/releases/tag/v1.5.2
 
 ## Mapa tecnico
 

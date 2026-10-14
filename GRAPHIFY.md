@@ -4,7 +4,7 @@
 > **Nao edite a mao.** Regere apos qualquer alteracao no plugin e antes do commit.
 
 - **Slug (imutavel):** `ml-duplicate-posts-pages`
-- **Versao:** `1.5.1` (readme Stable tag: `1.5.1`)
+- **Versao:** `1.5.2` (readme Stable tag: `1.5.2`)
 - **Text domain:** `ml-duplicate-posts-pages`
 - **Requisitos:** WordPress 5.8+ (testado ate 6.8), PHP 7.4+
 - **Gerado em:** 2026-10-14
@@ -23,6 +23,9 @@ ml-duplicate-posts-pages/
   uninstall.php
   assets/css/
     admin.css
+  assets/images/
+    icon-128x128.png
+    icon-256x256.png
   assets/js/
     admin.js
     editor.js
@@ -36,7 +39,7 @@ ml-duplicate-posts-pages/
 | Arquivo | Linhas | Classes | Metodos | Hooks |
 | --- | --- | --- | --- | --- |
 | `ml-duplicate-posts-pages/includes/class-ml-duplicate-posts-pages.php` | 1797 | `Plugin` | 46 | 20 |
-| `ml-duplicate-posts-pages/includes/class-mldpp-github-updater.php` | 227 | `GitHub_Updater` | 8 | 4 |
+| `ml-duplicate-posts-pages/includes/class-mldpp-github-updater.php` | 241 | `GitHub_Updater` | 9 | 4 |
 | `ml-duplicate-posts-pages/ml-duplicate-posts-pages.php` | 39 | - | - | - |
 | `ml-duplicate-posts-pages/uninstall.php` | 18 | - | - | - |
 
@@ -57,7 +60,7 @@ WordPress carrega ml-duplicate-posts-pages/ml-duplicate-posts-pages.php
 
 | Constante | Valor |
 | --- | --- |
-| `MLDPP_VERSION` | `'1.5.1'` |
+| `MLDPP_VERSION` | `'1.5.2'` |
 | `MLDPP_FILE` | `__FILE__` |
 | `MLDPP_DIR` | `plugin_dir_path(__FILE__)` |
 | `MLDPP_URL` | `plugin_dir_url(__FILE__)` |
@@ -362,12 +365,13 @@ ou "Diagnostico do updater" (`?mldpp_debug=1` no painel do plugin).
 | --- | --- | --- |
 | `init()` | public static | 12 |
 | `check_for_update()` | public static | 19 |
-| `plugin_info()` | public static | 84 |
-| `render_update_message()` | public static | 110 |
-| `plugin_row_meta()` | public static | 127 |
-| `get_release_changelog()` | private static | 138 |
-| `get_latest_release()` | private static | 151 |
-| `find_release_package()` | private static | 200 |
+| `icons()` | private static | 88 |
+| `plugin_info()` | public static | 97 |
+| `render_update_message()` | public static | 124 |
+| `plugin_row_meta()` | public static | 141 |
+| `get_release_changelog()` | private static | 152 |
+| `get_latest_release()` | private static | 165 |
+| `find_release_package()` | private static | 214 |
 
 ---
 

@@ -44,7 +44,7 @@ class GitHub_Updater {
                 'new_version'   => MLDPP_VERSION,
                 'url'           => MLDPP_GITHUB_REPO_URL,
                 'package'       => $release['package'],
-                'icons'         => array(),
+                'icons'         => self::icons(),
                 'banners'       => array(),
                 'banners_rtl'   => array(),
                 'tested'        => !empty($release['tested']) ? $release['tested'] : '',
@@ -68,7 +68,7 @@ class GitHub_Updater {
             'new_version'   => $release['version'],
             'url'           => MLDPP_GITHUB_REPO_URL,
             'package'       => $release['package'],
-            'icons'         => array(),
+            'icons'         => self::icons(),
             'banners'       => array(),
             'banners_rtl'   => array(),
             'tested'        => !empty($release['tested']) ? $release['tested'] : '',
@@ -79,6 +79,19 @@ class GitHub_Updater {
         unset($transient->no_update[MLDPP_BASENAME]);
 
         return $transient;
+    }
+
+    /**
+     * Icones do plugin para a tela de atualizacoes. Sem eles o WordPress exibe o
+     * icone generico e o plugin perde identidade visual no painel do cliente.
+     */
+    private static function icons() {
+        $base = MLDPP_URL . 'assets/images/';
+        return array(
+            '1x'      => $base . 'icon-128x128.png',
+            '2x'      => $base . 'icon-256x256.png',
+            'default' => $base . 'icon-256x256.png',
+        );
     }
 
     public static function plugin_info($result, $action, $args) {
@@ -100,6 +113,7 @@ class GitHub_Updater {
             'requires'      => '5.8',
             'requires_php'  => '7.4',
             'tested'        => !empty($release['tested']) ? $release['tested'] : '',
+            'icons'         => self::icons(),
             'sections'      => array(
                 'description' => 'Duplica posts, páginas e tipos de conteúdo personalizados preservando o título original e versionando o slug da cópia.',
                 'changelog'   => !empty($release['changelog']) ? $release['changelog'] : 'Consulte o changelog no GitHub.',
