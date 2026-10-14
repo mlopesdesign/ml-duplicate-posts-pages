@@ -6,9 +6,8 @@ administrativo no padrao ML.
 
 ## Ultima release
 
-**v1.5.0** - painel no editor de blocos (Gutenberg), duplicacao de paginas filhas e de
-variacoes de produto WooCommerce com SKU unico, prefixo/sufixo de titulo (antes codigo
-morto) e `_elementor_css` fora da copia.
+**v1.5.2** - icones do plugin na tela de atualizacoes (transient `update_plugins` e
+`plugins_api`). A 1.5.1 passou a buscar atualizacoes no repositorio publico de releases.
 
 Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages-releases/releases/tag/v1.5.2
 
