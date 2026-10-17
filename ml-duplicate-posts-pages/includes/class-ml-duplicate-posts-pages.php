@@ -417,6 +417,13 @@ class Plugin {
             return add_query_arg(array('mldpp_error' => 1), $redirect_to);
         }
 
+        if (License::is_locked()) {
+            return License::tab_url(array(
+                'mldpp_lic_type'   => 'error',
+                'mldpp_lic_notice' => rawurlencode(License::locked_message()),
+            ));
+        }
+
         $created = 0;
         foreach ((array) $post_ids as $post_id) {
             $new_id = $this->duplicate_post(absint($post_id));
@@ -627,6 +634,9 @@ class Plugin {
 
         check_admin_referer('mldpp_duplicate_post_' . $post_id);
 
+        // 1.6.0: sem teste/licenca do ML License Hub a duplicacao fica pausada.
+        License::guard_write();
+
         $new_id = $this->duplicate_post($post_id);
 
         if (is_wp_error($new_id)) {
@@ -652,6 +662,8 @@ class Plugin {
         }
 
         check_admin_referer('mldpp_manual_bulk_action', 'mldpp_manual_bulk_nonce');
+
+        License::guard_write();
 
         $post_type = isset($_POST['mldpp_bulk_post_type']) ? sanitize_key($_POST['mldpp_bulk_post_type']) : 'post';
         $limit     = isset($_POST['mldpp_bulk_limit']) ? absint($_POST['mldpp_bulk_limit']) : 10;
@@ -950,6 +962,12 @@ class Plugin {
 
         if (!$post || empty($post->ID)) {
             return new \WP_Error('mldpp_invalid_post', __('Conteúdo original não encontrado.', 'ml-duplicate-posts-pages'));
+        }
+
+        // Barreira central: sem teste/licenca nenhuma copia nova e criada (os filhos
+        // so sao duplicados junto com um pai ja liberado).
+        if (empty($args['is_child']) && License::is_locked()) {
+            return new \WP_Error('mldpp_locked', License::locked_message());
         }
 
         $settings = $this->get_settings();
@@ -1345,6 +1363,7 @@ class Plugin {
             'configuracoes' => __('Configurações', 'ml-duplicate-posts-pages'),
             'lote'          => __('Duplicação em lote', 'ml-duplicate-posts-pages'),
             'logs'          => __('Logs', 'ml-duplicate-posts-pages'),
+            License::TAB    => __('Licença', 'ml-duplicate-posts-pages'),
         );
 
         if (!array_key_exists($current_tab, $tabs)) {
@@ -1658,6 +1677,10 @@ class Plugin {
                     <?php endif; ?>
                 </div>
             </div>
+            <?php endif; ?>
+
+            <?php if ($current_tab === License::TAB) : ?>
+                <?php License::render_tab(); ?>
             <?php endif; ?>
 
             <?php if (!empty($_GET['mldpp_debug'])) : ?>
