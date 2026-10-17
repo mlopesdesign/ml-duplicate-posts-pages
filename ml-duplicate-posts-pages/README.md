@@ -6,10 +6,12 @@ administrativo no padrao ML.
 
 ## Ultima release
 
-**v1.5.2** - icones do plugin na tela de atualizacoes (transient `update_plugins` e
-`plugins_api`). A 1.5.1 passou a buscar atualizacoes no repositorio publico de releases.
+**v1.6.0** - licenca pelo site tools.mlopesdesign.com.br (ML License Hub): aba Licenca no
+painel, teste gratis de 30 dias por site (iniciado sozinho na primeira visita ao painel),
+licenca anual ou Pacote Agencia. Sem teste/licenca, a duplicacao e o salvamento das
+configuracoes ficam pausados; nada no site muda.
 
-Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages-releases/releases/tag/v1.5.2
+Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages-releases/releases/tag/v1.6.0
 
 ## Mapa tecnico
 
