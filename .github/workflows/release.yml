@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  pull_request:
   workflow_dispatch:
     inputs:
       skip_publish:
@@ -164,6 +165,12 @@ jobs:
           echo "SHA256=$HASH" >> "$GITHUB_OUTPUT"
           echo "SIZE=$SIZE" >> "$GITHUB_OUTPUT"
           echo "Asset: $ZIP_NAME | SHA-256: $HASH | Size: $SIZE bytes"
+
+      - name: ML Release Gate (plugin sozinho, identidade, atualizacao na mesma pasta)
+        # Trava obrigatoria: se reprovar, nenhum release e criado e nada chega aos clientes.
+        env:
+          GATE_MODE: ${{ github.ref_type == 'tag' && 'release' || 'pr' }}
+        run: bash .github/gate/gate.sh ml-duplicate-posts-pages ${{ steps.build.outputs.ZIP }}
 
       - name: Upload release asset
         if: github.event_name == 'push' && github.ref_type == 'tag'
