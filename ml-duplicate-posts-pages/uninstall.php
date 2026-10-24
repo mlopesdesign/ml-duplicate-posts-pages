@@ -18,6 +18,9 @@ delete_option('mldpp_logs');
 delete_transient('mldpp_github_release');
 
 delete_option('mldpp_free_cleanup');
+// Restos da licença da 1.6.0 (só do próprio plugin).
+delete_option('mllc_ml_duplicate_posts_pages');
+delete_option('mldpp_auto_trial_tried');
 
 // 1.7.0: plugin gratuito. Desagenda a renovação diária da licença que a 1.6.0 criava
 // (caso o site nunca tenha aberto o painel depois de atualizar).

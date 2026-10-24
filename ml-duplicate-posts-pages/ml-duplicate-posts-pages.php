@@ -46,7 +46,7 @@ function mldpp_free_cleanup() {
     wp_clear_scheduled_hook('mllc_ml_duplicate_posts_pages_refresh');
     update_option('mldpp_free_cleanup', MLDPP_VERSION, false);
 }
-add_action('admin_init', 'mldpp_free_cleanup');
+add_action('init', 'mldpp_free_cleanup');
 \MLDPP\GitHub_Updater::init();
 
 register_activation_hook(__FILE__, array('\MLDPP\Plugin', 'activate'));
