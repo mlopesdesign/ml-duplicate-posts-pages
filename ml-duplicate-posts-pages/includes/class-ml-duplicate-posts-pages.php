@@ -690,8 +690,9 @@ class Plugin {
 
         // 1.7.0: redireciona depois do lote (POST → GET). Sem isso, atualizar a página (F5)
         // reenviava o formulário e criava outra leva de cópias.
+        // O formulário posta para a própria aba, então wp_get_referer() costuma vir vazio: volta para a aba Lote.
         $back = wp_get_referer();
-        $back = $back ? remove_query_arg(array('mldpp_bulk_done', 'mldpp_notice'), $back) : admin_url('admin.php?page=mldpp-dashboard');
+        $back = $back ? remove_query_arg(array('mldpp_bulk_done', 'mldpp_notice'), $back) : admin_url('admin.php?page=mldpp-dashboard&tab=lote');
         wp_safe_redirect(add_query_arg('mldpp_bulk_done', $created, $back));
         exit;
     }
