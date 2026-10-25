@@ -417,13 +417,6 @@ class Plugin {
             return add_query_arg(array('mldpp_error' => 1), $redirect_to);
         }
 
-        if (License::is_locked()) {
-            return License::tab_url(array(
-                'mldpp_lic_type'   => 'error',
-                'mldpp_lic_notice' => rawurlencode(License::locked_message()),
-            ));
-        }
-
         $created = 0;
         foreach ((array) $post_ids as $post_id) {
             $new_id = $this->duplicate_post(absint($post_id));
@@ -634,9 +627,6 @@ class Plugin {
 
         check_admin_referer('mldpp_duplicate_post_' . $post_id);
 
-        // 1.6.0: sem teste/licenca do ML License Hub a duplicacao fica pausada.
-        License::guard_write();
-
         $new_id = $this->duplicate_post($post_id);
 
         if (is_wp_error($new_id)) {
@@ -662,8 +652,6 @@ class Plugin {
         }
 
         check_admin_referer('mldpp_manual_bulk_action', 'mldpp_manual_bulk_nonce');
-
-        License::guard_write();
 
         $post_type = isset($_POST['mldpp_bulk_post_type']) ? sanitize_key($_POST['mldpp_bulk_post_type']) : 'post';
         $limit     = isset($_POST['mldpp_bulk_limit']) ? absint($_POST['mldpp_bulk_limit']) : 10;
@@ -700,14 +688,13 @@ class Plugin {
             }
         }
 
-        $this->notices[] = array(
-            'type'    => 'success',
-            'message' => sprintf(
-                /* translators: %d: quantity */
-                _n('%d cópia criada com sucesso.', '%d cópias criadas com sucesso.', $created, 'ml-duplicate-posts-pages'),
-                $created
-            ),
-        );
+        // 1.7.0: redireciona depois do lote (POST → GET). Sem isso, atualizar a página (F5)
+        // reenviava o formulário e criava outra leva de cópias.
+        // O formulário posta para a própria aba, então wp_get_referer() costuma vir vazio: volta para a aba Lote.
+        $back = wp_get_referer();
+        $back = $back ? remove_query_arg(array('mldpp_bulk_done', 'mldpp_notice'), $back) : admin_url('admin.php?page=mldpp-dashboard&tab=lote');
+        wp_safe_redirect(add_query_arg('mldpp_bulk_done', $created, $back));
+        exit;
     }
 
     public function render_admin_notices() {
@@ -962,12 +949,6 @@ class Plugin {
 
         if (!$post || empty($post->ID)) {
             return new \WP_Error('mldpp_invalid_post', __('Conteúdo original não encontrado.', 'ml-duplicate-posts-pages'));
-        }
-
-        // Barreira central: sem teste/licenca nenhuma copia nova e criada (os filhos
-        // so sao duplicados junto com um pai ja liberado).
-        if (empty($args['is_child']) && License::is_locked()) {
-            return new \WP_Error('mldpp_locked', License::locked_message());
         }
 
         $settings = $this->get_settings();
@@ -1363,7 +1344,6 @@ class Plugin {
             'configuracoes' => __('Configurações', 'ml-duplicate-posts-pages'),
             'lote'          => __('Duplicação em lote', 'ml-duplicate-posts-pages'),
             'logs'          => __('Logs', 'ml-duplicate-posts-pages'),
-            License::TAB    => __('Licença', 'ml-duplicate-posts-pages'),
         );
 
         if (!array_key_exists($current_tab, $tabs)) {
@@ -1620,7 +1600,7 @@ class Plugin {
                             </tr>
                         </table>
 
-                        <p><button type="submit" name="mldpp_manual_bulk_submit" class="button button-primary">Executar duplicação em lote</button></p>
+                        <p><button type="submit" name="mldpp_manual_bulk_submit" value="1" class="button button-primary">Executar duplicação em lote</button></p>
                     </form>
                 </div>
             </div>
@@ -1677,10 +1657,6 @@ class Plugin {
                     <?php endif; ?>
                 </div>
             </div>
-            <?php endif; ?>
-
-            <?php if ($current_tab === License::TAB) : ?>
-                <?php License::render_tab(); ?>
             <?php endif; ?>
 
             <?php if (!empty($_GET['mldpp_debug'])) : ?>

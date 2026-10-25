@@ -1,17 +1,16 @@
 # ML Duplicate Posts & Pages
 
-Plugin comercial WordPress para duplicacao profissional de posts, paginas e CPTs
+Plugin gratuito WordPress para duplicacao profissional de posts, paginas e CPTs
 com controle granular do que copiar, acao rapida, acao em massa, logs e painel
 administrativo no padrao ML.
 
 ## Ultima release
 
-**v1.6.0** - licenca pelo site tools.mlopesdesign.com.br (ML License Hub): aba Licenca no
-painel, teste gratis de 30 dias por site (iniciado sozinho na primeira visita ao painel),
-licenca anual ou Pacote Agencia. Sem teste/licenca, a duplicacao e o salvamento das
-configuracoes ficam pausados; nada no site muda.
+**v1.7.0** - o plugin agora e gratuito: sem licenca, sem teste e sem chamada ao
+servidor de licencas. Duplicacao e configuracoes sempre liberadas; a aba Licenca saiu
+do painel e a renovacao diaria agendada pela 1.6.0 e desagendada sozinha.
 
-Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages-releases/releases/tag/v1.6.0
+Veja a release: https://github.com/mlopesdesign/ml-duplicate-posts-pages-releases/releases/tag/v1.7.0
 
 ## Mapa tecnico
 
